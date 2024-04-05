@@ -1,0 +1,320 @@
+<mujoco model="tensegrity">
+  <!--<option timestep="0.002" collision="predefined" gravity="0 0 0"/>-->
+  <option timestep="0.005" collision="predefined" cone="elliptic" impratio="100"/>
+  <default>
+    <site size="0.005" rgba="1 1 1 1"/>
+    <default class="tendon_actuator">
+      <general ctrllimited="true" ctrlrange="-16.0 0" dyntype="filter" dynprm="0.0179"/> <!-- for real2sim -->
+    </default>
+    <default class="tendon_spatial">
+      <tendon damping="0.0703" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/>
+    </default>
+    <default class="tendon_spatial_static">
+      <tendon damping="500" stiffness="0" frictionloss="0.5"/>
+    </default>
+  </default>
+  <worldbody>
+    <light pos="0 1 1" dir="0 -1 -1" diffuse="1 1 1"/>
+    <camera name="robot_track_camera1" pos="0 -2 2" zaxis="0 -0.2 0.2" mode="trackcom" fovy="45"/>
+    <camera name="robot_track_camera2" pos="0 -3 3" zaxis="0 -0.2 0.2" mode="trackcom" fovy="45"/>
+    <camera name="robot_track_camera3" pos="0 0 3" euler="0 0 0" mode="trackcom" fovy="45"/>
+
+      <!-- link -->
+    <body name="link1" pos="-0.125 0 0.25" euler="0 0 0">
+      <geom name="link1" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 0 0 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator1">
+        <geom name="actuator1" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_1t">
+        <geom name="sphere_1t" type="sphere" size="0.015" mass="0.05" pos="0 0 0"/>
+      </body>
+        <body pos="0 0 -0.25" name="sphere_1b">
+        <geom name="sphere_1b" type="sphere" size="0.015" mass="0.05" pos="0 0 0"/>
+      </body>
+      <joint name="link1" type="free"/>
+      <site name="imu_link1" pos="0 0 0"/>
+      <site name="link1_top" pos="0 0 0.225"/> <!-- 0 0 0.2-->
+      <site name="link1_top1" pos="0.005 0.005 0.24"/>
+      <site name="link1_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link1_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link1_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link1_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link1_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link1_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link1_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+    <body name="link2" pos="0.125 0 0.25" euler="0 0 0">
+      <geom name="link2" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 1 0 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator2">
+        <geom name="actuator2" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_2t">
+        <geom name="sphere_2t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
+      </body>
+      <body pos="0 0 -0.25" name="sphere_2b">
+        <geom name="sphere_2b" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0"/>
+      </body>
+      <joint name="link2" type="free"/>
+      <site name="imu_link2" pos="0 0 0"/>
+      <site name="link2_top1" pos="0.005 0.005 0.24"/>
+      <site name="link2_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link2_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link2_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link2_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link2_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link2_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link2_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+    <body name="link3" pos="0 0.125 0.25" euler="0 90 0">
+      <geom name="link3" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 1 0 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator3"> 
+        <geom name="actuator3" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_3t">
+        <geom name="sphere_3t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
+      </body>
+      <body pos="0 0 -0.25" name="sphere_3b">
+        <geom name="sphere_3b" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0"/>
+      </body>
+      <joint name="link3" type="free"/>
+      <site name="imu_link3" pos="0 0 0"/>
+      <site name="link3_top1" pos="0.005 0.005 0.24"/>
+      <site name="link3_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link3_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link3_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link3_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link3_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link3_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link3_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+    <body name="link4" pos="0 -0.125 0.25" euler="0 90 0">
+      <geom name="link4" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 1 1 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator4">
+        <geom name="actuator4" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_4t">
+        <geom name="sphere_4t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
+      </body>
+      <body pos="0 0 -0.25" name="sphere_4b">
+        <geom name="sphere_4b" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0"/>
+      </body>
+      <joint name="link4" type="free"/>
+      <site name="imu_link4" pos="0 0 0"/>
+      <site name="link4_top1" pos="0.005 0.005 0.24"/>
+      <site name="link4_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link4_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link4_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link4_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link4_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link4_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link4_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+    <body name="link5" pos="0 0 0.375" euler="90 0 0">
+      <geom name="link5" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 0 1 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator5">
+        <geom name="actuator5" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_5t">
+        <geom name="sphere_5t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
+      </body>
+      <body pos="0 0 -0.25" name="sphere_5b">
+        <geom name="sphere_5b" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0"/>
+      </body>
+      <joint name="link5" type="free"/>
+      <site name="imu_link5" pos="0 0 0"/>
+      <site name="link5_top1" pos="0.005 0.005 0.24"/>
+      <site name="link5_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link5_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link5_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link5_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link5_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link5_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link5_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+    <body name="link6" pos="0 0 0.125" euler="90 0 0">
+      <geom name="link6" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 0 1 1" pos="0 0 0"/>
+      <body pos="0 0 0" name="actuator6">
+        <geom name="actuator6" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+      </body>
+      <body pos="0 0 0.25" name="sphere_6t">
+        <geom name="sphere_6t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
+      </body>
+      <body pos="0 0 -0.25" name="sphere_6b">
+        <geom name="sphere_6b" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0"/>
+      </body>
+      <joint name="link6" type="free"/>
+      <site name="imu_link6" pos="0 0 0"/>
+      <site name="link6_top1" pos="0.005 0.005 0.24"/>
+      <site name="link6_top2" pos="-0.005 0.005 0.24"/>
+      <site name="link6_top3" pos="-0.005 -0.005 0.24"/>
+      <site name="link6_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link6_bottom1" pos="0.005 0.005 -0.24"/>
+      <site name="link6_bottom2" pos="-0.005 0.005 -0.24"/>
+      <site name="link6_bottom3" pos="-0.005 -0.005 -0.24"/>
+      <site name="link6_bottom4" pos="0.005 -0.005 -0.24"/>
+    </body>
+
+  </worldbody>
+
+  <tendon>
+    <!-- link1 -->
+    <spatial name="link1t_3b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_top2"/>
+      <site site="link3_bottom3"/>
+    </spatial>
+    <spatial name="link1t_4b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_top3"/>
+      <site site="link4_bottom1"/>
+    </spatial>
+    <spatial name="link1b_3b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_bottom2"/>
+      <site site="link3_bottom4"/>
+    </spatial>
+    <spatial name="link1b_4b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_bottom3"/>
+      <site site="link4_bottom4"/>
+    </spatial>
+    <spatial name="link1b_6t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_bottom1"/>
+      <site site="link6_top3"/>
+    </spatial>
+    <spatial name="link1b_6b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_bottom1"/>
+      <site site="link6_bottom3"/>
+    </spatial>
+    <spatial name="link1t_5t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_top1"/>
+      <site site="link5_top2"/>
+    </spatial>
+    <spatial name="link1t_5b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link1_top4"/>
+      <site site="link5_bottom2"/>
+    </spatial>
+
+    <!-- link2 -->
+    <spatial name="link2t_3t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_top1"/>
+      <site site="link3_top3"/>
+    </spatial>
+    <spatial name="link2t_4t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_top4"/>
+      <site site="link4_top2"/>
+    </spatial>
+    <spatial name="link2b_3t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_bottom1"/>
+      <site site="link3_top4"/>
+    </spatial>
+    <spatial name="link2b_4t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_bottom4"/>
+      <site site="link4_top1"/>
+    </spatial>
+    <spatial name="link2b_6t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_bottom3"/>
+      <site site="link6_top4"/>
+    </spatial>
+    <spatial name="link2b_6b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_bottom2"/>
+      <site site="link6_bottom4"/>
+    </spatial>
+    <spatial name="link2t_5t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_top3"/>
+      <site site="link5_top1"/>
+    </spatial>
+    <spatial name="link2t_5b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link2_top2"/>
+      <site site="link5_bottom1"/>
+    </spatial>
+
+    <!-- link3 -->
+    <spatial name="link3t_5b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link3_top2"/>
+      <site site="link5_bottom3"/>
+    </spatial>
+    <spatial name="link3b_5b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link3_bottom2"/>
+      <site site="link5_bottom3"/>
+    </spatial>
+    <spatial name="link3t_6b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link3_top1"/>
+      <site site="link6_bottom1"/>
+    </spatial>
+    <spatial name="link3b_6b" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link3_bottom1"/>
+      <site site="link6_bottom2"/>
+    </spatial>
+
+    <!-- link4 -->
+    <spatial name="link4t_5t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link4_top3"/>
+      <site site="link5_top4"/>
+    </spatial>
+    <spatial name="link4b_5t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link4_bottom3"/>
+      <site site="link5_top3"/>
+    </spatial>
+    <spatial name="link4t_6t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link4_top4"/>
+      <site site="link6_top1"/>
+    </spatial>
+    <spatial name="link4b_6t" class="tendon_spatial" rgba="0 0 0 1">
+      <site site="link4_bottom4"/>
+      <site site="link6_top2"/>
+    </spatial>
+  </tendon>
+
+  <actuator>
+    <!-- tention-controlled actuators-->
+    <general name="link1t_3b" tendon="link1t_3b"  class="tendon_actuator"/>
+    <general name="link1t_4b" tendon="link1t_4b"  class="tendon_actuator"/>
+    <general name="link1b_3b" tendon="link1b_3b"  class="tendon_actuator"/>
+    <general name="link1b_4b" tendon="link1b_4b"  class="tendon_actuator"/>
+    <general name="link1b_6t" tendon="link1b_6t"  class="tendon_actuator"/> 
+    <general name="link1b_6b" tendon="link1b_6b"  class="tendon_actuator"/>
+    <general name="link1t_5b" tendon="link1t_5b"  class="tendon_actuator"/>
+    <general name="link1t_5t" tendon="link1t_5t"  class="tendon_actuator"/>
+    <general name="link2t_4t" tendon="link2t_4t"  class="tendon_actuator"/>
+    <general name="link2t_3t" tendon="link2t_3t"  class="tendon_actuator"/>
+    <general name="link2b_3t" tendon="link2b_3t"  class="tendon_actuator"/>
+    <general name="link2b_4t" tendon="link2b_4t"  class="tendon_actuator"/>
+    <general name="link2b_6t" tendon="link2b_6t"  class="tendon_actuator"/>
+    <general name="link2t_5t" tendon="link2t_5t"  class="tendon_actuator"/>
+    <general name="link2b_6b" tendon="link2b_6b"  class="tendon_actuator"/>
+    <general name="link2t_5b" tendon="link2t_5b"  class="tendon_actuator"/>
+    <general name="link3t_5b" tendon="link3t_5b"  class="tendon_actuator"/>
+    <general name="link3b_5b" tendon="link3b_5b"  class="tendon_actuator"/>
+    <general name="link3t_6b" tendon="link3t_6b"  class="tendon_actuator"/>
+    <general name="link3b_6b" tendon="link3b_6b"  class="tendon_actuator"/>
+    <general name="link4t_5t" tendon="link4t_5t"  class="tendon_actuator"/>
+    <general name="link4b_5t" tendon="link4b_5t"  class="tendon_actuator"/>
+    <general name="link4t_6t" tendon="link4t_6t"  class="tendon_actuator"/>
+    <general name="link4b_6t" tendon="link4b_6t"  class="tendon_actuator"/>
+    
+  </actuator>
+
+  <sensor>
+    <!-- IMUセンサーの定義 -->
+    <accelerometer name="imu_acc_link1" site="imu_link1"/>
+    <gyro name="imu_gyro_link1" site="imu_link1"/>
+    
+    <accelerometer name="imu_acc_link2" site="imu_link2"/>
+    <gyro name="imu_gyro_link2" site="imu_link2"/>
+
+    <accelerometer name="imu_acc_link3" site="imu_link3"/>
+    <gyro name="imu_gyro_link3" site="imu_link3"/>
+
+    <accelerometer name="imu_acc_link4" site="imu_link4"/>
+    <gyro name="imu_gyro_link4" site="imu_link4"/>
+
+    <accelerometer name="imu_acc_link5" site="imu_link5"/>
+    <gyro name="imu_gyro_link5" site="imu_link5"/>
+
+    <accelerometer name="imu_acc_link6" site="imu_link6"/>
+    <gyro name="imu_gyro_link6" site="imu_link6"/>
+  </sensor>
+
+</mujoco>

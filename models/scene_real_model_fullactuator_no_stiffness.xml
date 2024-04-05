@@ -1,0 +1,74 @@
+<mujoco model="scene">
+  <include file="tensegrity_real_model_fullactuator_no_stiffness.xml"/>
+
+  <visual>
+    <headlight diffuse="0.6 0.6 0.6" ambient="0.5 0.5 0.3" specular="0 0 0"/>
+      <!--	<global azimuth="120" elevation="-20"/>-->
+    </visual>
+
+    <asset>
+      <texture type="skybox" builtin="gradient" rgb1="0.3 0.5 0.7" rgb2="0.1 0.1 0.1" width="512" height="3072"/>
+      <texture type="2d" name="groundplane" builtin="checker" mark="edge" rgb1="0.2 0.3 0.4" rgb2="0.1 0.2 0.3" markrgb="0.8 0.8 0.8" width="300" height="300"/>
+      <material name="groundplane" texture="groundplane" texuniform="true" texrepeat="5 5"
+        reflectance="0.2"/>
+    </asset>
+
+    <worldbody>
+      <light pos="0 0 1.5" dir="0 0 -1" directional="true"/>
+      <geom name="floor" pos="0 0 -0.015" size="0 0 0.05" type="plane" material="groundplane"/>
+    </worldbody>
+
+    <contact>
+      <pair geom1="actuator1" geom2="actuator2" friction="5.0 5.0"/>
+      <pair geom1="actuator1" geom2="actuator3" friction="5.0 5.0"/>
+      <pair geom1="actuator1" geom2="actuator4" friction="5.0 5.0"/>
+      <pair geom1="actuator1" geom2="actuator5" friction="5.0 5.0"/>
+      <pair geom1="actuator1" geom2="actuator6" friction="5.0 5.0"/>
+      <pair geom1="actuator2" geom2="actuator3" friction="5.0 5.0"/>
+      <pair geom1="actuator2" geom2="actuator4" friction="5.0 5.0"/>
+      <pair geom1="actuator2" geom2="actuator5" friction="5.0 5.0"/>
+      <pair geom1="actuator2" geom2="actuator6" friction="5.0 5.0"/>
+      <pair geom1="actuator3" geom2="actuator4" friction="5.0 5.0"/>
+      <pair geom1="actuator3" geom2="actuator5" friction="5.0 5.0"/>
+      <pair geom1="actuator3" geom2="actuator6" friction="5.0 5.0"/>
+      <pair geom1="actuator4" geom2="actuator5" friction="5.0 5.0"/>
+      <pair geom1="actuator4" geom2="actuator6" friction="5.0 5.0"/>
+      <pair geom1="actuator5" geom2="actuator6" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link1" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link2" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link3" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link4" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link5" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="link6" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_1t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_1b" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_2t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_2b" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_3t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_3b" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_4t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_4b" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_5t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_5b" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_6t" friction="5.0 5.0"/>
+      <pair geom1="floor" geom2="sphere_6b" friction="5.0 5.0"/>
+      <pair geom1="link1" geom2="link2"/>
+      <pair geom1="link1" geom2="link3"/>
+      <pair geom1="link1" geom2="link4"/>
+      <pair geom1="link1" geom2="link5"/>
+      <pair geom1="link1" geom2="link6"/>
+      <pair geom1="link2" geom2="link3"/>
+      <pair geom1="link2" geom2="link4"/>
+      <pair geom1="link2" geom2="link5"/>
+      <pair geom1="link2" geom2="link6"/>
+      <pair geom1="link3" geom2="link4"/>
+      <pair geom1="link3" geom2="link5"/>
+      <pair geom1="link3" geom2="link6"/>
+      <pair geom1="link4" geom2="link5"/>
+      <pair geom1="link4" geom2="link6"/>
+      <pair geom1="link5" geom2="link6"/>
+    </contact>
+
+  </mujoco>
+
+
