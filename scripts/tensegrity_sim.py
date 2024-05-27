@@ -9,11 +9,11 @@ import mujoco
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 from collections import deque
+import csv
 
 # from rospkg import RosPack
 from gymnasium import utils, spaces
 from gymnasium.envs.mujoco import MujocoEnv
-from tensegrity_sim import TensegrityEnv
 from rospkg import RosPack
 
 from EMAfilter import EMAFilter
@@ -36,9 +36,12 @@ INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
+LOG_TO_CSV = False
+LOG_FILE = '/logs/com_vel_initial_vel.csv'
+LOG_TARGET = 'com_vel'
 
 
-class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle):
+class TensegrityEnv(MujocoEnv, utils.EzPickle):
     metadata = {
         "render_modes": [
             "human",
@@ -71,6 +74,8 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
             
         # ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
+        #action filter
+        # self.action_filter = ActionFilter(0.3, np.array([0.0]*24))
         # initial encoder value
         self.enc_value = np.array([0.0]*24)
         # initial tendon length
@@ -130,6 +135,11 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
             self.step_rate = 1.0
             if self.plot_reward:
                 self.draw_reward()
+
+        self.rospack = RosPack()
+        self.log_to_csv = LOG_TO_CSV
+        if self.log_to_csv:
+            self.log_file = self.rospack.get_path('tensegrity_slam_sim') + LOG_FILE
 
         self.rospack = RosPack()
         model_path = self.rospack.get_path('tensegrity_slam_sim') + '/models/scene_real_model_fullactuator_no_stiffness.xml'
@@ -199,11 +209,18 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
         plt.xlabel("Step")
         plt.ylabel("link1_acceleration[x]")
         plt.show()
+
+    def save_log_data(self, step, log_data):
+        with open(self.log_file, 'a') as f:
+            writer = csv.writer(f)
+            data = [step] + list(log_data)
+            writer.writerow(data)
         
     def step(self, action):
         """
         what we need do inside the step():
             - rescale_actions and add assistive force if needed---> TODO
+            - filter action value
             - mujoco simulation step forward
             - update flag and counters(such as step_cnt)
             - calculate the observations
@@ -225,6 +242,10 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
         # rescale action to tension force first
         tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
 
+        # filter the action value
+        # filtered_tension_force = self.action_filter.update(tension_force)
+        filtered_tension_force = tension_force
+
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
 
@@ -232,8 +253,8 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
         self.data.xfrc_applied[:] = 0.0
         
         # add action(tension force) noise from [0.95, 1.05]--> percentage
-        tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
-        average_tension_force = np.mean(tension_force)
+        filtered_tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
+        average_tension_force = np.mean(filtered_tension_force)
         # do simulation
         self._step_mujoco_simulation(tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
 
@@ -279,6 +300,19 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
         self.contorl_penalty = -0.000 * np.linalg.norm(action - self.prev_action) * self.step_rate
         #self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
         self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
+
+        # log data to csv
+        if self.log_to_csv:
+            if LOG_TARGET == 'com_pos':
+                self.save_log_data(self.step_cnt, current_com_pos)
+            elif LOG_TARGET == 'com_vel':
+                self.save_log_data(self.step_cnt, current_com_vel)
+            elif LOG_TARGET == 'action':
+                self.save_log_data(self.step_cnt, action)
+            #self.log_tension_force(self.step_cnt, obs[0:36])
+            #self.log_tension_force(self.step_cnt, self.data.sensordata)
+            #self.log_tension_force(self.step_cnt, obs[36:60])
+            #self.log_tension_force(self.step_cnt, self.data.ten_length)
         
         ## update prev_action
         self.prev_action = action
@@ -404,8 +438,10 @@ class TensegrityEnvRealModelFullActuatorNoStiffnessImu(MujocoEnv, utils.EzPickle
             v = 0.8
             self.vel_command = [v, 0.0, 0.0]
 
-        # ema filter
+        # initialize ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36)) ## TODO: will cahnge to 0.1
+        # initialize action filter
+        # self.action_filter = ActionFilter(0.3, np.array([0.0]*24))
         # initial encoder value
         self.enc_value = np.array([0.0]*24)
         # initial tendon length

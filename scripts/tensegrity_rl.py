@@ -15,20 +15,6 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from tensegrity_sim import TensegrityEnv
-from tensegrity_sim_realmodel_fullactuator_velocity import TensegrityEnvRealModelFullActuatorVelocity
-from tensegrity_sim_realmodel_fullactuator_angularmoment import TensegrityEnvRealModelFullActuatorAngularMomentum
-from tensegrity_sim_realmodel_fullactuator_linear_velocity import TensegrityEnvRealModelFullActuatorLinearVelocity
-from tensegrity_sim_realmodel_fullactuator_no_stiffness import TensegrityEnvRealModelFullActuatorNoStiffness
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_imu import TensegrityEnvRealModelFullActuatorNoStiffnessImu
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_init_pos import TensegrityEnvRealModelFullActuatorNoStiffnessInitPos
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_terminate import TensegrityEnvRealModelFullActuatorNoStiffnessTerminate
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_penalty import TensegrityEnvRealModelFullActuatorNoStiffnessPenalty
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_velocity_command import TensegrityEnvRealModelFullActuatorNoStiffnessVelocityCommand
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_forward import TensegrityEnvRealModelFullActuatorNoStiffnessForward
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_no_action import TensegrityEnvRealModelFullActuatorNoStiffnessNoAction
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_velocity_reward import TensegrityEnvRealModelFullActuatorNoStiffnessVelocityReward
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_init_pos_no_terminate import TensegrityEnvRealModelFullActuatorNoStiffnessInitPosNoTerminate
-from tensegrity_sim_realmodel_fullactuator_no_stiffness_imu_no_randomize import TensegrityEnvRealModelFullActuatorNoStiffnessImuNoRandomize
 
 
 def parser():
@@ -70,21 +56,7 @@ def make_env(test, max_step, act_range=6.0, resume=False, render_mode=None):
 
     def _init():
         env_class_options = [TensegrityEnv, # 1
-                             TensegrityEnvRealModelFullActuatorVelocity, # 2
-                             TensegrityEnvRealModelFullActuatorAngularMomentum, # 3
-                             TensegrityEnvRealModelFullActuatorLinearVelocity, # 4
-                             TensegrityEnvRealModelFullActuatorNoStiffness, # 5
-                             TensegrityEnvRealModelFullActuatorNoStiffnessImu, # 6
-                             TensegrityEnvRealModelFullActuatorNoStiffnessInitPos, # 7
-                             TensegrityEnvRealModelFullActuatorNoStiffnessTerminate, # 8
-                             TensegrityEnvRealModelFullActuatorNoStiffnessPenalty, # 9
-                             TensegrityEnvRealModelFullActuatorNoStiffnessVelocityCommand, # 10
-                             TensegrityEnvRealModelFullActuatorNoStiffnessForward, # 11
-                             TensegrityEnvRealModelFullActuatorNoStiffnessNoAction, # 12
-                             TensegrityEnvRealModelFullActuatorNoStiffnessVelocityReward, # 13
-                             TensegrityEnvRealModelFullActuatorNoStiffnessInitPosNoTerminate, # 14
-                             TensegrityEnvRealModelFullActuatorNoStiffnessImuNoRandomize, # 15
-                             ]  # TODO: add new env class here
+                            ]  # TODO: add new env class here
         env_cls = env_class_options[args.sim_env-1]
         info_key = env_cls.info_keywords
         # print(info_key)
