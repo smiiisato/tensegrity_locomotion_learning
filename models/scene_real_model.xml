@@ -1,5 +1,5 @@
 <mujoco model="scene">
-  <include file="tensegrity_real_model_fullactuator_no_stiffness.xml"/>
+  <include file="tensegrity_real_model.xml"/>
 
   <visual>
     <headlight diffuse="0.6 0.6 0.6" ambient="0.5 0.5 0.3" specular="0 0 0"/>

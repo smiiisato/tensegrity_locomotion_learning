@@ -11,7 +11,7 @@ from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecEnv, SubprocVecEnv, DummyVecEnv, VecNormalize
 from stable_baselines3.common.utils import set_random_seed, get_device, get_latest_run_id
-from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, EvalCallback
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from tensegrity_sim import TensegrityEnv
@@ -34,7 +34,7 @@ def parser():
     parser.add_argument("--batch_size", type=int, default=24576, help="number of batch size(experience buffer size)")  # experience buffer size
     parser.add_argument("--minibatch", type=int, default=2048, help="number of mini_batch to update policy")  # minibatch size
     parser.add_argument("--epoch", type=int, default=5, help="number of epoch to update")  # data epoch numbers for one policy iteration
-    parser.add_argument("--max_step", type=int, default=400000000, help="PPO train total time steps")  # sum of all parallel envs' steps
+    parser.add_argument("--max_step", type=int, default=4000000000, help="PPO train total time steps")  # sum of all parallel envs' steps
     parser.add_argument("--lr", type=float, default=0.0003, help="learning rate")
     parser.add_argument("--gamma", type=float, default=0.99, help="discount factor")
     parser.add_argument("--save_interval", type=int, default=50, help="interval of iteration to save network weight")

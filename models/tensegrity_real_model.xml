@@ -4,13 +4,19 @@
   <default>
     <site size="0.005" rgba="1 1 1 1"/>
     <default class="tendon_actuator">
-      <general ctrllimited="true" ctrlrange="-16.0 0" dyntype="filter" dynprm="0.0179"/> <!-- for real2sim -->
+      <general ctrllimited="true" ctrlrange="-16.0 0" dyntype="filter" dynprm="0.0179"/> <!-- change parameters later -->
     </default>
     <default class="tendon_spatial">
       <tendon damping="0.0703" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/>
     </default>
     <default class="tendon_spatial_static">
       <tendon damping="500" stiffness="0" frictionloss="0.5"/>
+    </default>
+    <default class="touch_prop_top">
+      <site pos="0 0 0.25" rgba="1 0 0 1" size=".030 .030 .030" type="ellipsoid"/>
+    </default>
+    <default class="touch_prop_bottom">
+      <site pos="0 0 -0.25" rgba="0 1 0 1" size=".030 .030 .030" type="ellipsoid"/>
     </default>
   </default>
   <worldbody>
@@ -33,11 +39,12 @@
       </body>
       <joint name="link1" type="free"/>
       <site name="imu_link1" pos="0 0 0"/>
-      <site name="link1_top" pos="0 0 0.225"/> <!-- 0 0 0.2-->
+      <site name="link1_top" class="touch_prop_top"/> <!-- 0 0 0.2-->
       <site name="link1_top1" pos="0.005 0.005 0.24"/>
       <site name="link1_top2" pos="-0.005 0.005 0.24"/>
       <site name="link1_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link1_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link1_bottom" class="touch_prop_bottom"/>
       <site name="link1_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link1_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link1_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -57,10 +64,12 @@
       </body>
       <joint name="link2" type="free"/>
       <site name="imu_link2" pos="0 0 0"/>
+      <site name="link2_top" class="touch_prop_top"/> <!-- 0 0 0.2-->
       <site name="link2_top1" pos="0.005 0.005 0.24"/>
       <site name="link2_top2" pos="-0.005 0.005 0.24"/>
       <site name="link2_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link2_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link2_bottom" class="touch_prop_bottom"/>
       <site name="link2_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link2_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link2_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -80,10 +89,12 @@
       </body>
       <joint name="link3" type="free"/>
       <site name="imu_link3" pos="0 0 0"/>
+      <site name="link3_top" class="touch_prop_top"/> 
       <site name="link3_top1" pos="0.005 0.005 0.24"/>
       <site name="link3_top2" pos="-0.005 0.005 0.24"/>
       <site name="link3_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link3_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link3_bottom" class="touch_prop_bottom"/>
       <site name="link3_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link3_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link3_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -103,10 +114,12 @@
       </body>
       <joint name="link4" type="free"/>
       <site name="imu_link4" pos="0 0 0"/>
+      <site name="link4_top" class="touch_prop_top"/>
       <site name="link4_top1" pos="0.005 0.005 0.24"/>
       <site name="link4_top2" pos="-0.005 0.005 0.24"/>
       <site name="link4_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link4_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link4_bottom" class="touch_prop_bottom"/>
       <site name="link4_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link4_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link4_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -126,10 +139,12 @@
       </body>
       <joint name="link5" type="free"/>
       <site name="imu_link5" pos="0 0 0"/>
+      <site name="link5_top" class="touch_prop_top"/>
       <site name="link5_top1" pos="0.005 0.005 0.24"/>
       <site name="link5_top2" pos="-0.005 0.005 0.24"/>
       <site name="link5_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link5_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link5_bottom" class="touch_prop_bottom"/>
       <site name="link5_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link5_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link5_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -149,10 +164,12 @@
       </body>
       <joint name="link6" type="free"/>
       <site name="imu_link6" pos="0 0 0"/>
+      <site name="link6_top" class="touch_prop_top"/>
       <site name="link6_top1" pos="0.005 0.005 0.24"/>
       <site name="link6_top2" pos="-0.005 0.005 0.24"/>
       <site name="link6_top3" pos="-0.005 -0.005 0.24"/>
       <site name="link6_top4" pos="0.005 -0.005 0.24"/>
+      <site name="link6_bottom" class="touch_prop_bottom"/>
       <site name="link6_bottom1" pos="0.005 0.005 -0.24"/>
       <site name="link6_bottom2" pos="-0.005 0.005 -0.24"/>
       <site name="link6_bottom3" pos="-0.005 -0.005 -0.24"/>
@@ -297,7 +314,7 @@
   </actuator>
 
   <sensor>
-    <!-- IMUセンサーの定義 -->
+    <!-- define imu sensor -->
     <accelerometer name="imu_acc_link1" site="imu_link1"/>
     <gyro name="imu_gyro_link1" site="imu_link1"/>
     
@@ -315,6 +332,20 @@
 
     <accelerometer name="imu_acc_link6" site="imu_link6"/>
     <gyro name="imu_gyro_link6" site="imu_link6"/>
+
+    <!-- define touch sensor -->
+    <touch name="touch_link1_top" site="link1_top"/>
+    <touch name="touch_link1_bottom" site="link1_bottom"/>
+    <touch name="touch_link2_top" site="link2_top"/>
+    <touch name="touch_link2_bottom" site="link2_bottom"/>
+    <touch name="touch_link3_top" site="link3_top"/>
+    <touch name="touch_link3_bottom" site="link3_bottom"/>
+    <touch name="touch_link4_top" site="link4_top"/>
+    <touch name="touch_link4_bottom" site="link4_bottom"/>
+    <touch name="touch_link5_top" site="link5_top"/>
+    <touch name="touch_link5_bottom" site="link5_bottom"/>
+    <touch name="touch_link6_top" site="link6_top"/>
+    <touch name="touch_link6_bottom" site="link6_bottom"/>
   </sensor>
 
 </mujoco>
