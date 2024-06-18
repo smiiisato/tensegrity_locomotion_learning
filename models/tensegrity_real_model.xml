@@ -13,10 +13,10 @@
       <tendon damping="500" stiffness="0" frictionloss="0.5"/>
     </default>
     <default class="touch_prop_top">
-      <site pos="0 0 0.25" rgba="1 0 0 1" size=".030 .030 .030" type="ellipsoid"/>
+      <site pos="0 0 0.25" rgba="1 0 0 1" size=".030 .030 .030"/>
     </default>
     <default class="touch_prop_bottom">
-      <site pos="0 0 -0.25" rgba="0 1 0 1" size=".030 .030 .030" type="ellipsoid"/>
+      <site pos="0 0 -0.25" rgba="0 1 0 1" size=".030 .030 .030"/>
     </default>
   </default>
   <worldbody>
