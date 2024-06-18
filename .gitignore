@@ -6,3 +6,4 @@ MUJOCO_LOG.TXT
 saved/
 scripts/__pycache__/
 logs/
+*.txt
