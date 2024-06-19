@@ -142,7 +142,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.log_file = self.rospack.get_path('tensegrity_locomotion_learning') + LOG_FILE
 
         self.rospack = RosPack()
-        model_path = self.rospack.get_path('tensegrity_slam_sim') + '/models/scene_real_model_fullactuator_no_stiffness.xml'
+        model_path = self.rospack.get_path('tensegrity_locomotion_learning') + '/models/scene_real_model_fullactuator_no_stiffness.xml'
         self.frame_skip = 2  # number of mujoco simulation steps per action step
         MujocoEnv.__init__(
             self,
