@@ -36,9 +36,9 @@ INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
-LOG_TO_CSV = False
-LOG_FILE = '/logs/com_vel_initial_vel.csv'
-LOG_TARGET = 'com_vel'
+LOG_TO_CSV = True
+LOG_FILE = '/logs/obs_0619_1.csv'
+LOG_TARGET = 'obs'
 
 
 class TensegrityEnv(MujocoEnv, utils.EzPickle):
@@ -139,7 +139,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.rospack = RosPack()
         self.log_to_csv = LOG_TO_CSV
         if self.log_to_csv:
-            self.log_file = self.rospack.get_path('tensegrity_slam_sim') + LOG_FILE
+            self.log_file = self.rospack.get_path('tensegrity_locomotion_learning') + LOG_FILE
 
         self.rospack = RosPack()
         model_path = self.rospack.get_path('tensegrity_slam_sim') + '/models/scene_real_model_fullactuator_no_stiffness.xml'
@@ -309,10 +309,11 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 self.save_log_data(self.step_cnt, current_com_vel)
             elif LOG_TARGET == 'action':
                 self.save_log_data(self.step_cnt, action)
-            #self.log_tension_force(self.step_cnt, obs[0:36])
-            #self.log_tension_force(self.step_cnt, self.data.sensordata)
-            #self.log_tension_force(self.step_cnt, obs[36:60])
-            #self.log_tension_force(self.step_cnt, self.data.ten_length)
+            elif LOG_TARGET == 'obs':
+                self.save_log_data(self.step_cnt, obs)
+            elif LOG_TARGET == 'reward':
+                self.save_log_data(self.step_cnt, self.current_step_total_reward)
+  
         
         ## update prev_action
         self.prev_action = action
@@ -432,10 +433,10 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         # switch to new command
         if self.test:
-            self.vel_command = [0.8, 0.0, 0.0]
+            self.vel_command = [0.6, 0.0, 0.0]
         else:
             #v = np.random.uniform(0.4, 0.7)
-            v = 0.8
+            v = 0.6
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter
