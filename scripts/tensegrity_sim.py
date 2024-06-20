@@ -2,6 +2,7 @@
 this script uses the imu data from the real robot instead of quaternion value to train the tensegrity robot in simulation
 """
 
+import os
 import copy
 import time
 from typing import Any, Optional, SupportsFloat
@@ -14,7 +15,7 @@ import csv
 # from rospkg import RosPack
 from gymnasium import utils, spaces
 from gymnasium.envs.mujoco import MujocoEnv
-from rospkg import RosPack
+# from rospkg import RosPack
 
 from EMAfilter import EMAFilter
 
@@ -36,7 +37,7 @@ INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
-LOG_TO_CSV = True
+LOG_TO_CSV = False
 LOG_FILE = '/logs/obs_0619_1.csv'
 LOG_TARGET = 'obs'
 
@@ -136,13 +137,14 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             if self.plot_reward:
                 self.draw_reward()
 
-        self.rospack = RosPack()
+        # self.rospack = RosPack()
+        root_path = os.path.dirname(os.path.abspath(__file__)) + "/.."
         self.log_to_csv = LOG_TO_CSV
         if self.log_to_csv:
-            self.log_file = self.rospack.get_path('tensegrity_locomotion_learning') + LOG_FILE
+            self.log_file = os.path.join(root_path + LOG_FILE)
 
-        self.rospack = RosPack()
-        model_path = self.rospack.get_path('tensegrity_locomotion_learning') + '/models/scene_real_model_fullactuator_no_stiffness.xml'
+        # self.rospack = RosPack()
+        model_path = root_path + '/models/scene_real_model_fullactuator_no_stiffness.xml'
         self.frame_skip = 2  # number of mujoco simulation steps per action step
         MujocoEnv.__init__(
             self,
@@ -390,7 +392,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 # np.save("sensor_data.npy", self.sensor_data)
                 # print("sensor data saved!")
                 self.plot_sensor_data()
-
+        if np.any(np.isnan(obs)):
+            print("NaN in obs")
+            raise ValueError
+        if np.any(np.isnan(self.current_step_total_reward)):
+            print("NaN in reward calculation")
+            raise ValueError
         return (
             obs,
             self.current_step_total_reward,
