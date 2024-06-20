@@ -3,6 +3,7 @@ this script uses the imu data from the real robot instead of quaternion value to
 """
 
 import copy
+import os.path
 import time
 from typing import Any, Optional, SupportsFloat
 import mujoco
@@ -14,7 +15,6 @@ import csv
 # from rospkg import RosPack
 from gymnasium import utils, spaces
 from gymnasium.envs.mujoco import MujocoEnv
-from rospkg import RosPack
 
 from EMAfilter import EMAFilter
 
@@ -137,13 +137,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             if self.plot_reward:
                 self.draw_reward()
 
-        self.rospack = RosPack()
+        #self.rospack = RosPack()
         self.log_to_csv = LOG_TO_CSV
         if self.log_to_csv:
-            self.log_file = self.rospack.get_path('tensegrity_locomotion_learning') + LOG_FILE
+            self.log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), LOG_FILE)
 
-        self.rospack = RosPack()
-        model_path = self.rospack.get_path('tensegrity_locomotion_learning') + '/models/scene_real_model.xml'
+        model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '/models/scene_real_model.xml')
         self.frame_skip = 2  # number of mujoco simulation steps per action step
         MujocoEnv.__init__(
             self,
@@ -393,6 +392,13 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 # np.save("sensor_data.npy", self.sensor_data)
                 # print("sensor data saved!")
                 self.plot_sensor_data()
+
+        if np.any(np.isnan(obs)):
+            print("NaN in obs")
+            raise ValueError
+        if np.any(np.isnan(self.current_step_total_reward)):
+            print("NaN in reward calculation")
+            raise ValueError
 
         return (
             obs,
