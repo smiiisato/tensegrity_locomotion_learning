@@ -23,7 +23,6 @@ def rescale_actions(low, high, action):
     """
     remapping the normalized actions from [-1, 1] to [low, high]
     """
-
     d = (high - low) / 2.0
     m = (high + low) / 2.0
     rescaled_action = action * d + m
@@ -65,11 +64,11 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         """
         resume training is abandoned due to mujoco supports evaluation along with training
         """
-        self.plot_sensor = PLOT_SENSOR
-        if self.plot_sensor:
-            # sensor data
-            self.sensor_data = []
-            self.ema_data = []
+        # self.plot_sensor = PLOT_SENSOR
+        # if self.plot_sensor:
+        #     # sensor data
+        #     self.sensor_data = []
+        #     self.ema_data = []
             
         # ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
@@ -134,8 +133,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.step_rate = 0.
         if self.test:
             self.step_rate = 1.0
-            if self.plot_reward:
-                self.draw_reward()
+            # if self.plot_reward:
+            #     self.draw_reward()
 
         #self.rospack = RosPack()
         self.log_to_csv = LOG_TO_CSV
@@ -252,9 +251,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.actions = action 
         tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
 
-        # filter the action value
-        # filtered_tension_force = self.action_filter.update(tension_force)
-        filtered_tension_force = tension_force
+        # # filter the action value
+        # # filtered_tension_force = self.action_filter.update(tension_force)
+        # filtered_tension_force = tension_force
 
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
@@ -263,8 +262,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.data.xfrc_applied[:] = 0.0
         
         # add action(tension force) noise from [0.95, 1.05]--> percentage
-        filtered_tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
-        average_tension_force = np.mean(filtered_tension_force)
+        tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
+        average_tension_force = np.mean(tension_force)
         # do simulation
         self._step_mujoco_simulation(tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
 
@@ -305,7 +304,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
 
         # log data to csv
-        if self.log_to_csv:
+        if self.test and self.log_to_csv:
             if LOG_TARGET == 'com_pos':
                 self.save_log_data(self.step_cnt, self.com_pos)
             elif LOG_TARGET == 'com_vel':
@@ -323,32 +322,36 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.prev_ten_length = np.array(self.data.ten_length)
 
         rew_dict = {}
-        if self.test:
-            """
-            print("------------", self.episode_cnt)
-            # print("tendon_length", self.data.ten_length)
-            print("x distance", current_com_pos[0])
-            #print("angular momentum pitch", current_ang_momentum[1])
-            print("current reward", self.current_step_total_reward)
-            print("forward_x_reward", self.forward_x_reward)
-            """
-            #print("current reward", self.current_step_total_reward)
-            print("velocity_reward", self.velocity_reward)
-            #print("current_velocity", current_com_vel[0:2])
-            #print("angular momentum pitch", current_ang_momentum[1])
-            #print("ang_momentum_reward", self.ang_momentum_reward)
-            #print("ang_momentum_penalty", self.ang_momentum_penalty)
-            #print("current force", average_tension_force)
-            #print("tension force", tension_force)
-            rew_dict = {
-                "ang_momentum_reward": self.ang_momentum_reward,
-                "angular_momentum_penalty": self.ang_momentum_penalty
-            }
-            #self.fig1.canvas.draw()
-            #self.fig1.canvas.flush_events()
-            if self.plot_reward:
-                self.fig2.canvas.draw()
-                self.fig2.canvas.flush_events()
+        rew_dict = {
+            "ang_momentum_reward": self.ang_momentum_reward,
+            "angular_momentum_penalty": self.ang_momentum_penalty
+        }
+        # if self.test:
+        #     """
+        #     print("------------", self.episode_cnt)
+        #     # print("tendon_length", self.data.ten_length)
+        #     print("x distance", current_com_pos[0])
+        #     #print("angular momentum pitch", current_ang_momentum[1])
+        #     print("current reward", self.current_step_total_reward)
+        #     print("forward_x_reward", self.forward_x_reward)
+        #     """
+        #     #print("current reward", self.current_step_total_reward)
+        #     print("velocity_reward", self.velocity_reward)
+        #     #print("current_velocity", current_com_vel[0:2])
+        #     #print("angular momentum pitch", current_ang_momentum[1])
+        #     #print("ang_momentum_reward", self.ang_momentum_reward)
+        #     #print("ang_momentum_penalty", self.ang_momentum_penalty)
+        #     #print("current force", average_tension_force)
+        #     #print("tension force", tension_force)
+        #     rew_dict = {
+        #         "ang_momentum_reward": self.ang_momentum_reward,
+        #         "angular_momentum_penalty": self.ang_momentum_penalty
+        #     }
+        #     #self.fig1.canvas.draw()
+        #     #self.fig1.canvas.flush_events()
+        #     if self.plot_reward:
+        #         self.fig2.canvas.draw()
+        #         self.fig2.canvas.flush_events()
             #print("actutor velocity", self.data.actuator_velocity[0:3])
             #print("tendon velocity", self.data.ten_velocity[0:3])
             #print("diff velocity", self.data.ten_velocity[0:3]/1.0 - self.data.actuator_velocity[0:3])
@@ -383,15 +386,15 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         truncated = not (self.episode_cnt < self.max_episode)
         
         # save sensor data
-        if self.plot_sensor:
-            self.sensor_data.append(self.data.sensordata[0])
-        if terminated or truncated:
-            if self.plot_sensor:
-                # self.sensor_data = np.array(self.sensor_data)
-                # self.sensor_data = self.sensor_data.reshape(-1, 6)
-                # np.save("sensor_data.npy", self.sensor_data)
-                # print("sensor data saved!")
-                self.plot_sensor_data()
+        # if self.plot_sensor:
+        #     self.sensor_data.append(self.data.sensordata[0])
+        # if terminated or truncated:
+        #     if self.plot_sensor:
+        #         # self.sensor_data = np.array(self.sensor_data)
+        #         # self.sensor_data = self.sensor_data.reshape(-1, 6)
+        #         # np.save("sensor_data.npy", self.sensor_data)
+        #         # print("sensor data saved!")
+        #         self.plot_sensor_data()
 
         if np.any(np.isnan(obs)):
             print("NaN in obs")
@@ -410,9 +413,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
     def reset_model(self):
         
-        if self.plot_sensor:
-            self.sensor_data.clear()
-            self.ema_data.clear()
+        # if self.plot_sensor:
+        #     self.sensor_data.clear()
+        #     self.ema_data.clear()
 
         self.episode_cnt = 0
 
@@ -444,12 +447,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         if self.test:
             self.vel_command = [0.6, 0.0, 0.0]
         else:
-            v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
-            #v = 0.8
+            #v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
+            v = 0.8
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter
-        self.ema_filter = EMAFilter(0.267, np.array([0.0]*36)) ## TODO: will cahnge to 0.1
+        self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
         
         # initial tendon length
         self.prev_ten_length = self.data.ten_length
