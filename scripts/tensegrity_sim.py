@@ -402,9 +402,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
     def reset_model(self):
         
-        if self.plot_sensor:
-            self.sensor_data.clear()
-            self.ema_data.clear()
+        # if self.plot_sensor:
+        #     self.sensor_data.clear()
+        #     self.ema_data.clear()
 
         self.episode_cnt = 0
 
