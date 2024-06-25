@@ -72,50 +72,6 @@ def make_env(test, max_step, act_range=6.0, resume=False, render_mode=None):
         return env
     return _init
 
-def setup_logger(log_file):
-    """Set up the logger to write to a file."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
-        handlers=[
-            logging.FileHandler(log_file),
-            logging.StreamHandler()
-        ]
-    )
-
-# Custom callback for logging each iteration
-class LoggingCallback(BaseCallback):
-    def __init__(self, log_file, save_freq, verbose=0):
-        super(LoggingCallback, self).__init__(verbose)
-        self.log_file = log_file
-        self.save_freq = save_freq
-
-    def _on_step(self) -> bool:
-        if self.n_calls % self.save_freq == 0:
-            # print the current memory usage
-            memory = psutil.virtual_memory()
-            memory_log_entry = f"Memory usage: {memory.percent}%\n"
-            print(memory_log_entry)
-            # Log the current time step and the name of the function
-            with open(self.log_file, 'a') as f:
-                f.write(f"{time.strftime('%Y-%m-%d %H:%M:%S')} - INFO - Iteration: {self.n_calls/self.save_freq}\n")
-        return True
-
-# Custom callback for logging memory usage
-def log_memory_usage(log_file):
-    while True:
-        memory = psutil.virtual_memory()
-        memory_log_entry = f"{time.strftime('%Y-%m-%d %H:%M:%S')} - INFO - Memory usage: {memory.percent}%\n"
-
-        # Get the name of the function that called this function
-        current_function = inspect.currentframe().f_back.f_code.co_name
-        function_log_entry = f"{time.strftime('%Y-%m-%d %H:%M:%S')} - INFO - Function: {current_function}\n"
-        with open(log_file, 'a') as f:
-            f.write(memory_log_entry)
-            f.write(function_log_entry)
-        time.sleep(3)
-
-
 def main():
     args = parser().parse_args()
     set_random_seed(args.seed)
@@ -203,29 +159,10 @@ def main():
                                                  save_path=root_dir + "/../saved/PPO_{0}/models".format(trial),
                                                  name_prefix='model',
                                                  save_vecnormalize=args.normalize_obs)
-        
-        # Setup logger with current date and time
-        current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
-        log_dir = root_dir + '/../saved/PPO_{0}'.format(trial)
-        # ensure the log directory exists
-        if log_dir is not None:
-            os.makedirs(log_dir, exist_ok=True)
-        log_file = log_dir + '/training_log_{0}.txt'.format(current_time)
-        setup_logger(log_file)
-        log_file_memory = log_dir + '/memory_log_{0}.txt'.format(current_time)
-        setup_logger(log_file_memory)
-
-        # Start the memory logging thread
-        memory_thread = threading.Thread(target=log_memory_usage, args=(log_file_memory,))
-        memory_thread.daemon = True
-        memory_thread.start()
-
-        # Create a custom callback for logging each iteration
-        logging_callback = LoggingCallback(log_file, save_freq)
 
         # start_randomizing_callback = StartRandomizingCallback(threshold=200, env=env, model=model)
         # start_command_callback = StartCommandCallback(threshold=100, env=env, model=model)
-        callbacks = CallbackList([checkpoint_callback, logging_callback])
+        callbacks = CallbackList([checkpoint_callback])
         logging.info("Start training------")
         model.learn(total_timesteps=args.max_step, callback=callbacks)
         logging.info("End training------")

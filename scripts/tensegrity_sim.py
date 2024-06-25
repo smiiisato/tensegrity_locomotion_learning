@@ -137,11 +137,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             #     self.draw_reward()
 
         #self.rospack = RosPack()
+        root_path = os.path.dirname(os.path.abspath(__file__)) + "/.."
         self.log_to_csv = LOG_TO_CSV
         if self.log_to_csv:
-            self.log_file = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), LOG_FILE)
+            self.log_file = root_path + LOG_FILE
 
-        model_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '/models/scene_real_model.xml')
+        model_path = root_path + '/models/scene_real_model.xml'
         self.frame_skip = 2  # number of mujoco simulation steps per action step
         MujocoEnv.__init__(
             self,
@@ -396,6 +397,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         #         # print("sensor data saved!")
         #         self.plot_sensor_data()
 
+        # nan check
         if np.any(np.isnan(obs)):
             print("NaN in obs")
             raise ValueError
@@ -448,7 +450,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.vel_command = [0.6, 0.0, 0.0]
         else:
             #v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
-            v = 0.8
+            v = 0.6
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter
