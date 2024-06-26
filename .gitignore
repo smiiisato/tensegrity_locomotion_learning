@@ -10,3 +10,4 @@ logs/
 venv
 venv2
 .idea
+test.py

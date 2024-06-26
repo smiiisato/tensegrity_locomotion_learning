@@ -164,7 +164,7 @@ def main():
         # start_command_callback = StartCommandCallback(threshold=100, env=env, model=model)
         callbacks = CallbackList([checkpoint_callback])
         logging.info("Start training------")
-        model.learn(total_timesteps=args.max_step, callback=callbacks)
+        model.learn(total_timesteps=args.max_step, callback=callbacks, progress_bar=True)
         logging.info("End training------")
 
     elif args.what == "test":

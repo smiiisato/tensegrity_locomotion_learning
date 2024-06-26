@@ -98,7 +98,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.action_space_high = [1.0] * self.num_actions
 
         # observation space
-        num_obs_per_step = 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3
+        num_obs_per_step_actor = 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3
 
         # observation parameters
         self.projected_gravity = None # (3*6,)
@@ -114,9 +114,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.actions = np.array([0.]*self.num_actions)  # (24,)
         self.vel_command = np.array([0., 0., 0.])   # (3,)
 
-    
+        # observation space
+        num_obs_per_step_critic = num_obs_per_step_actor + 0 # TODO: add privilege information
         self.n_obs_step = 1
-        observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step*self.n_obs_step,))
+        actor_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_actor*self.n_obs_step,))
+        critic_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_critic*self.n_obs_step,))
+        observation_space = spaces.Tuple((actor_observation_space, critic_observation_space))
         self.obs_deque = deque(maxlen=self.n_obs_step)
         for i in range(self.n_obs_step):
             self.obs_deque.appendleft(np.zeros(num_obs_per_step))
