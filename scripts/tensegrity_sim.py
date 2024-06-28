@@ -116,13 +116,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         # observation space
         num_obs_per_step_critic = num_obs_per_step_actor + 0 # TODO: add privilege information
-        self.n_obs_step = 1
-        actor_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_actor*self.n_obs_step,))
-        critic_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_critic*self.n_obs_step,))
-        observation_space = spaces.Tuple((actor_observation_space, critic_observation_space))
-        self.obs_deque = deque(maxlen=self.n_obs_step)
-        for i in range(self.n_obs_step):
-            self.obs_deque.appendleft(np.zeros(num_obs_per_step))
+        actor_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_actor,))
+        critic_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_critic,))
+        observation_space = spaces.Dict({
+            "actor": actor_observation_space, 
+            "critic": critic_observation_space
+            })
 
         self.check_steps = 200
         self.com_pos_deque = deque(maxlen=self.check_steps)
@@ -185,9 +184,20 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.action_space = spaces.Box(low, high, dtype=np.float32)
         return self.action_space
 
-    def _get_current_obs(self):
+    def _get_current_actor_obs(self):
         """
-        obs = projected gravity + linear velocity + com_velocity + com_pos + angular velocity + imu_data + contact state + distance from COM
+        actor_obs = imu_data + tendon_length + tendon_speed + actions + commands
+        """
+        self.imu_data = np.array(copy.deepcopy(self.data.sensordata[:36]))  # (36,)
+        #print("contact_state", self.contact_state)
+        self.tendon_length = np.array(copy.deepcopy(self.data.ten_length))  # (24,)
+        self.tendon_speed = np.array(copy.deepcopy(self.data.ten_velocity))  # (24,)
+
+        return np.concatenate((self.imu_data, self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
+    
+    def _get_current_critic_obs(self):
+        """
+        critic_obs = projected gravity + linear velocity + com_velocity + com_pos + angular velocity + imu_data + contact state + distance from COM
             + tendon_length + tendon_speed + actions + commands
         """
         self.projected_gravity = self.get_projected_gravity()  # (18,)
@@ -205,10 +215,16 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         return np.concatenate((self.projected_gravity, self.linear_velocity, self.com_velocity, self.com_pos, self.angular_velocity, self.imu_data, 
                                self.contact_state, self.distance_from_com, 
-                               self.tendon_length, self.tendon_speed, self.actions, self.vel_command))
+                               self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
+    
+    def _get_current_obs(self):
+        """
+        observations = Dict({"actor":actor_obs, "critic":critic_obs})
+        """
+        actor_obs = self._get_current_actor_obs()
+        critic_obs = self._get_current_critic_obs()
+        return {"actor": actor_obs, "critic": critic_obs}
 
-    def _get_stack_obs(self):
-        return np.concatenate([self.obs_deque[i] for i in range(self.n_obs_step)])
     
     def get_projected_gravity(self):
         """
@@ -281,8 +297,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
         self.com_vel = np.mean(copy.deepcopy(self.data.qvel.reshape(-1, 6)), axis=0)  # (6,)
 
-        self.obs_deque.appendleft(cur_step_obs)
-        obs = self._get_stack_obs()
+        obs = cur_step_obs
 
         # calculate the rewards
         current_ang_momentum = self.calculate_angular_momentum(self.data.qpos,
@@ -325,7 +340,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         # update prev_ten_length
         self.prev_ten_length = np.array(self.data.ten_length)
 
-        rew_dict = {}
         rew_dict = {
             "ang_momentum_reward": self.ang_momentum_reward,
             "angular_momentum_penalty": self.ang_momentum_penalty
@@ -477,7 +491,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.data.ctrl[:] = self.initial_tension
 
         # return the stacked obs as the initial obs of episode
-        return self._get_stack_obs()
+        return self._get_current_obs()
+
 
     def calculate_angular_momentum(self, qpos, qvel, com_position, com_vel):
         total_angular_momentum = np.zeros(3)

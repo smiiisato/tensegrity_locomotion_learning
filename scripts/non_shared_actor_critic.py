@@ -35,12 +35,12 @@ from stable_baselines3.common.torch_layers import (
 from feature_extractor import ActorFeatureExtractor, CriticFeatureExtractor
 from mlp_extractor import NonSharedMLPExtractor
 
-class IndependentActorCriticPolicy(ActorCriticPolicy):
+class NonSharedActorCriticPolicy(ActorCriticPolicy):
     """
     Policy class (with both actor and critic) for Independent Actor-Critic networks.
 
-    :param observation_space: Observation space
-    :param action_space: Action space
+    :param observation_space: Observation space -> Dict{"actor": Box, "critic": Box}
+    :param action_space: Action space -> Box
     :param lr_schedule: Learning rate schedule (could be constant)
     :param net_arch: Network architecture
     :param activation_fn: Activation function
@@ -72,7 +72,7 @@ class IndependentActorCriticPolicy(ActorCriticPolicy):
             *args,
             **kwargs,
         ):
-        super(IndependentActorCriticPolicy, self).__init__(
+        super(NonSharedActorCriticPolicy, self).__init__(
             observation_space,
             action_space,
             lr_schedule,
@@ -94,10 +94,12 @@ class IndependentActorCriticPolicy(ActorCriticPolicy):
         )
 
         # non-shared feature extractors
-        self.pi_features_extractor = ActorFeatureExtractor(observation_space=observation_space.__getitem__(0), 
-                                                               features_dim=observation_space.__getitem__(0).shape[0])
-        self.vf_features_extractor = CriticFeatureExtractor(observation_space=observation_space.__getitem__(1),
-                                                                features_dim=observation_space.__getitem__(1).shape[0])
+        self.pi_features_extractor = ActorFeatureExtractor(observation_space=observation_space.__getitem__("actor"),
+                                                               features_dim=observation_space.__getitem__("actor").shape[0])
+        self.vf_features_extractor = CriticFeatureExtractor(observation_space=observation_space.__getitem__("critic"),
+                                                                features_dim=observation_space.__getitem__("critic").shape[0])
+        
+        # dimension of the features extracted by the feature extractor
         self.features_dim = {"pi": self.pi_features_extractor.features_dim, 
                              "vf": self.vf_features_extractor.features_dim}
         

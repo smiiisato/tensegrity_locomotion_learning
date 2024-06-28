@@ -89,7 +89,7 @@ def main():
         if args.normalize_obs:
             env = VecNormalize(venv=env,
                                training=True,
-                               norm_obs=True,
+                               norm_obs=True, # normalize observation
                                norm_reward=False,
                                clip_obs=args.obs_range,
                                gamma=args.gamma)
