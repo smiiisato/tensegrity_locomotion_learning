@@ -23,6 +23,9 @@ class NonSharedMLPExtractor(nn.Module):
         ) -> None:
         super(NonSharedMLPExtractor, self).__init__()
 
+        self.features_dim = features_dim
+        print("features_dim: ", features_dim)
+
         device = get_device(device)
         policy_net: List[nn.Module] = []
         value_net: List[nn.Module] = []

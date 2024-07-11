@@ -480,8 +480,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         zero_actions = np.array([0.]*self.num_actions)
 
         cur_step_obs = self._get_current_obs()
-        for i in range(self.n_obs_step):
-            self.obs_deque.appendleft(cur_step_obs)
         # update the com state
         self.prev_com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
         for k in range(self.check_steps):

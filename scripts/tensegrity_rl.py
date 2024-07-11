@@ -8,9 +8,6 @@ import pandas as pd
 import torch
 import logging
 from datetime import datetime
-import psutil
-import threading
-import inspect
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
@@ -20,6 +17,7 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList,
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from tensegrity_sim import TensegrityEnv
+from non_shared_actor_critic import NonSharedActorCriticPolicy
 
 
 def parser():
@@ -123,7 +121,7 @@ def main():
     policy_kwargs = dict(activation_fn=torch.nn.Tanh,
                          net_arch=dict(pi=pi_arch, vf=vf_arch),  # changed from [512, 256] 
                          log_std_init=-2.1,)  # -2.1  for ppo19
-    model = PPO("MlpPolicy",
+    model = PPO(NonSharedActorCriticPolicy,
                 env,
                 policy_kwargs=policy_kwargs,
                 learning_rate=args.lr,

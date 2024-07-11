@@ -13,6 +13,7 @@ import numpy as np
 import torch as th
 from gymnasium import spaces
 from torch import nn
+import pdb
 
 from stable_baselines3.common.distributions import (
     BernoulliDistribution,
@@ -32,6 +33,7 @@ from stable_baselines3.common.torch_layers import (
     NatureCNN,
     create_mlp,
 )
+from stable_baselines3.common.type_aliases import Schedule
 from feature_extractor import ActorFeatureExtractor, CriticFeatureExtractor
 from mlp_extractor import NonSharedMLPExtractor
 
@@ -54,7 +56,7 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
             self,
             observation_space: spaces.Space,
             action_space: spaces.Space,
-            lr_schedule: Callable[[float], float],
+            lr_schedule: Schedule,
             net_arch: Optional[Union[List[int], Dict[str, List[int]]]] = None,
             activation_fn: Type[nn.Module] = nn.Tanh,
             ortho_init: bool = True,
@@ -109,11 +111,11 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
         self._rebuild(lr_schedule=lr_schedule)
 
 
-    def _rebuild(self, lr_schedule: Callable[[float], float]) -> None:
+    def _rebuild(self, lr_schedule: Schedule) -> None:
         """
         Rebuild the network (mainly for setting new optimizers with different learning rates)
         """
-        self._build_mlp_extractor()
+        self._custom_build_mlp_extractor()
         self._build_actor_net()
         self._build_critic_net()
 
@@ -137,7 +139,7 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
         self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  
         
 
-    def _build_mlp_extractor(self) -> None:
+    def _custom_build_mlp_extractor(self) -> None:
         """
         Build the separated actor and critic networks.
         """

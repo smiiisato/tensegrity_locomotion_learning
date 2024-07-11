@@ -1,3 +1,25 @@
+# --------------------------
+# this script is used to debug the tensegrity_rl.py script
+# --------------------------
+
+# root the path to the copied stable_baselines3 library
+""" import sys
+sys.path.insert(0, '/home/my_stable_baselines3/stable_baselines3/')
+
+import stable_baselines3
+print(stable_baselines3.__file__) # /home/my_stable_baselines3/stable_baselines3/__init__.py """
+
+import json
+from tensegrity_utils import load_module
+
+with open('config.json', 'r') as file:
+    config = json.load(file)
+
+stable_baselines3_path = config['paths']['stable_baselines3_path']
+# Load stable_baselines3
+stable_baselines3 = load_module("stable_baselines3", stable_baselines3_path)
+
+
 import os
 import re
 import time
@@ -12,6 +34,7 @@ import psutil
 import threading
 import inspect
 import faulthandler
+import pdb
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
@@ -21,6 +44,8 @@ from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList,
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from tensegrity_sim import TensegrityEnv
+from non_shared_actor_critic import NonSharedActorCriticPolicy
+
 
 # Enable faulthandler
 #faulthandler.enable()
@@ -172,7 +197,7 @@ def main():
         policy_kwargs = dict(activation_fn=torch.nn.Tanh,
                             net_arch=dict(pi=pi_arch, vf=vf_arch),  # changed from [512, 256] 
                             log_std_init=-2.1,)  # -2.1  for ppo19
-        model = PPO("MlpPolicy",
+        model = PPO(NonSharedActorCriticPolicy,
                     env,
                     policy_kwargs=policy_kwargs,
                     learning_rate=args.lr,

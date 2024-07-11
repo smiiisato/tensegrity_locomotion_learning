@@ -11,3 +11,4 @@ venv
 venv2
 .idea
 test.py
+config.json
