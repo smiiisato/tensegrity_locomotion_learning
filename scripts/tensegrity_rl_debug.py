@@ -3,12 +3,6 @@
 # --------------------------
 
 # root the path to the copied stable_baselines3 library
-""" import sys
-sys.path.insert(0, '/home/my_stable_baselines3/stable_baselines3/')
-
-import stable_baselines3
-print(stable_baselines3.__file__) # /home/my_stable_baselines3/stable_baselines3/__init__.py """
-
 import json
 from tensegrity_utils import load_module
 
@@ -153,7 +147,7 @@ def main():
 
         max_step_per_sub_env = int(args.max_step - 1 / args.n_env) + 1
         if args.what == "train":
-            env = SubprocVecEnv([make_env(test=False,
+            env = DummyVecEnv([make_env(test=False,
                                         max_step=max_step_per_sub_env,
                                         act_range=args.act_range,
                                         resume=args.resume,
@@ -257,7 +251,7 @@ def main():
             # start_command_callback = StartCommandCallback(threshold=100, env=env, model=model)
             callbacks = CallbackList([checkpoint_callback, logging_callback])
             logging.info("Start training------")
-            model.learn(total_timesteps=args.max_step, callback=callbacks)
+            model.learn(total_timesteps=args.max_step, callback=callbacks, progress_bar=True)
             logging.info("End training------")
 
         elif args.what == "test":

@@ -97,8 +97,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.action_space_low = [-1.0] * self.num_actions
         self.action_space_high = [1.0] * self.num_actions
 
-        # observation space
-        num_obs_per_step_actor = 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3
 
         # observation parameters
         self.projected_gravity = None # (3*6,)
@@ -115,7 +113,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.vel_command = np.array([0., 0., 0.])   # (3,)
 
         # observation space
-        num_obs_per_step_critic = num_obs_per_step_actor + 0 # TODO: add privilege information
+        num_obs_per_step_actor = 111
+        num_obs_per_step_critic = 204
         actor_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_actor,))
         critic_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_critic,))
         observation_space = spaces.Dict({
@@ -187,6 +186,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
     def _get_current_actor_obs(self):
         """
         actor_obs = imu_data + tendon_length + tendon_speed + actions + commands
+        actor observation dimention == 36 + 24 + 24 + 24 + 3 = 111
         """
         self.imu_data = np.array(copy.deepcopy(self.data.sensordata[:36]))  # (36,)
         #print("contact_state", self.contact_state)
@@ -199,6 +199,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         """
         critic_obs = projected gravity + linear velocity + com_velocity + com_pos + angular velocity + imu_data + contact state + distance from COM
             + tendon_length + tendon_speed + actions + commands
+        critic observation dimention == 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3 = 204
         """
         self.projected_gravity = self.get_projected_gravity()  # (18,)
         cur_velocity = np.array(copy.deepcopy(self.data.qvel.reshape(-1, 6)))   # (6, 6)
@@ -415,12 +416,17 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         #         self.plot_sensor_data()
 
         # nan check
-        if np.any(np.isnan(obs)):
-            print("NaN in obs")
+        if np.any(np.isnan(obs["actor"])):
+            print("NaN in actor obs")
+            raise ValueError
+        if np.any(np.isnan(obs["critic"])):
+            print("NaN in critic obs")
             raise ValueError
         if np.any(np.isnan(self.current_step_total_reward)):
             print("NaN in reward calculation")
             raise ValueError
+        
+        # print("current obs: ", obs)
 
         return (
             obs,

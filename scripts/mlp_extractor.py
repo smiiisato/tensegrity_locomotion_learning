@@ -63,12 +63,12 @@ class NonSharedMLPExtractor(nn.Module):
         self.value_net = nn.Sequential(*value_net).to(device)
 
 
-    def forward(self, features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def forward(self, pi_features: th.Tensor, vf_features: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
         """
         :return: latent_policy, latent_value of the specified network.
             If all layers are shared, then ``latent_policy == latent_value``
         """
-        return self.forward_actor(features), self.forward_critic(features)
+        return self.forward_actor(pi_features), self.forward_critic(vf_features)
 
     def forward_actor(self, features: th.Tensor) -> th.Tensor:
         return self.policy_net(features)

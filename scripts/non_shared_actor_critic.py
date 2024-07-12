@@ -33,7 +33,7 @@ from stable_baselines3.common.torch_layers import (
     NatureCNN,
     create_mlp,
 )
-from stable_baselines3.common.type_aliases import Schedule
+from stable_baselines3.common.type_aliases import Schedule, PyTorchObs
 from feature_extractor import ActorFeatureExtractor, CriticFeatureExtractor
 from mlp_extractor import NonSharedMLPExtractor
 
@@ -75,22 +75,23 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
             **kwargs,
         ):
         super(NonSharedActorCriticPolicy, self).__init__(
-            observation_space,
-            action_space,
-            lr_schedule,
-            net_arch,
-            activation_fn,
-            ortho_init,
-            use_sde,
-            log_std_init,
-            full_std,
-            use_expln,
-            squash_output,
-            features_extractor_class,
-            features_extractor_kwargs,
-            normalize_images,
-            optimizer_class,
-            optimizer_kwargs,
+            observation_space = observation_space,
+            action_space = action_space,
+            lr_schedule = lr_schedule,
+            net_arch = net_arch,
+            activation_fn = activation_fn,
+            ortho_init = ortho_init,
+            use_sde = use_sde,
+            log_std_init = log_std_init,
+            full_std = full_std,
+            use_expln = use_expln,
+            squash_output = squash_output,
+            features_extractor_class = features_extractor_class,
+            features_extractor_kwargs = features_extractor_kwargs,
+            share_features_extractor=share_features_extractor,
+            normalize_images = normalize_images,
+            optimizer_class = optimizer_class,
+            optimizer_kwargs = optimizer_kwargs,
             *args,
             **kwargs,
         )
@@ -136,8 +137,8 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
                 module.apply(partial(self.init_weights, gain=gain))
 
         # Setup optimizer with initial learning rate
-        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs)  
-        
+        self.optimizer = self.optimizer_class(self.parameters(), lr=lr_schedule(1), **self.optimizer_kwargs) 
+    
 
     def _custom_build_mlp_extractor(self) -> None:
         """
@@ -178,7 +179,7 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
         self.value_net = nn.Linear(latent_dim_vf, 1)
 
 
-    def forward(self, obs: th.Tensor, deterministic: bool = False) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
+    def forward(self, obs: PyTorchObs, deterministic: bool = False) -> Tuple[th.Tensor, th.Tensor, th.Tensor]:
         """
         Forward pass in all the networks (actor and critic)
 
@@ -201,16 +202,26 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
         return actions, values, log_prob
 
 
-    def extract_features(self, obs: th.Tensor) -> Tuple[th.Tensor, th.Tensor]:
+    def extract_features(self, obs: PyTorchObs) -> Tuple[th.Tensor, th.Tensor]:
         """
         Extract features in both actor and critic networks.
 
         :param obs: Observation
         :return: actor features, critic features
         """
-        actor_obs, critic_obs = th.split(obs, [self.pi_features_extractor.features_dim, self.vf_features_extractor.features_dim], dim=1)
+        actor_obs = obs["actor"]
+        critic_obs = obs["critic"]
         return self.pi_features_extractor(actor_obs), self.vf_features_extractor(critic_obs)
     
+    def predict_values(self, obs: PyTorchObs) -> th.Tensor: #TODO: implement this function
+        """
+        Get the estimated values according to the current policy given the observations.
 
+        :param obs: Observation
+        :return: the estimated values.
+        """
+        pi_features, vf_features = self.extract_features(obs)
+        latent_vf = self.mlp_extractor.forward_critic(vf_features)
+        return self.value_net(latent_vf)
 
     
