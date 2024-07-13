@@ -220,8 +220,19 @@ class NonSharedActorCriticPolicy(ActorCriticPolicy):
         :param obs: Observation
         :return: the estimated values.
         """
-        pi_features, vf_features = self.extract_features(obs)
+        vf_features = self.vf_features_extractor(obs["critic"])
         latent_vf = self.mlp_extractor.forward_critic(vf_features)
-        return self.value_net(latent_vf)
+        return self.value_net(latent_vf)  
+
+    def get_distribution(self, obs: PyTorchObs) -> Distribution:
+        """
+        Get the current policy distribution given the observations.
+
+        :param obs: Observation, dict with keys ["actor", "critic"]
+        :return: the action distribution.
+        """
+        features = self.pi_features_extractor(obs["actor"])
+        latent_pi = self.mlp_extractor.forward_actor(features)
+        return self._get_action_dist_from_latent(latent_pi)
 
     
