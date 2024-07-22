@@ -29,8 +29,8 @@ def rescale_actions(low, high, action):
     return rescaled_action
 
 
-ADD_TENDON_LENGTH_OBSERVATION = True
-INITIALIZE_ROBOT_IN_AIR = False
+ADD_TENDON_LENGTH_OBSERVATION = False
+INITIALIZE_ROBOT_IN_AIR = True
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
@@ -133,7 +133,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         self.step_rate = 0.
         if self.test:
-            self.step_rate = 1.0
+            self.step_rate = 0.5
             # if self.plot_reward:
             #     self.draw_reward()
 
@@ -188,12 +188,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         actor_obs = imu_data + tendon_length + tendon_speed + actions + commands
         actor observation dimention == 36 + 24 + 24 + 24 + 3 = 111
         """
-        self.imu_data = np.array(copy.deepcopy(self.data.sensordata[:36]))  # (36,)
-        #print("contact_state", self.contact_state)
-        self.tendon_length = np.array(copy.deepcopy(self.data.ten_length))  # (24,)
-        self.tendon_speed = np.array(copy.deepcopy(self.data.ten_velocity))  # (24,)
+        self.imu_data = self.ema_filter.update(np.array(copy.deepcopy(self.data.sensordata[:36]))) # (36,)
+        imu_with_noise = self.imu_data * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 36)
+        self.tendon_length = np.array(copy.deepcopy(self.data.ten_length)) * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 24)  # (24,)
+        self.tendon_speed = np.array(copy.deepcopy(self.data.ten_velocity)) * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 24) # (24,)
 
-        return np.concatenate((self.imu_data, self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
+        return np.concatenate((imu_with_noise, self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
     
     def _get_current_critic_obs(self):
         """
@@ -207,7 +207,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.com_velocity = np.mean(cur_velocity, axis=0)  # (6,)
         self.com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
         self.angular_velocity = np.array(cur_velocity[:, 3:]).reshape(-1)  # (18,)
-        self.imu_data = np.array(copy.deepcopy(self.data.sensordata[:36]))  # (36,)
+        self.imu_data = self.ema_filter.update(np.array(copy.deepcopy(self.data.sensordata[:36])))  # (36,)
         self.contact_state = np.array(copy.deepcopy(self.data.sensordata[36:48]))  # (12,)
         #print("contact_state", self.contact_state)
         self.distance_from_com = (np.array(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3])) - self.com_pos).flatten()  # (18,)
@@ -272,10 +272,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.actions = action 
         tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
 
-        # # filter the action value
-        # # filtered_tension_force = self.action_filter.update(tension_force)
-        # filtered_tension_force = tension_force
-
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
 
@@ -283,8 +279,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.data.xfrc_applied[:] = 0.0
         
         # add action(tension force) noise from [0.95, 1.05]--> percentage
-        tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
-        average_tension_force = np.mean(tension_force)
+        tension_force *= np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, self.num_actions)
+        #average_tension_force = np.mean(tension_force)
+
         # do simulation
         self._step_mujoco_simulation(tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
 
@@ -460,11 +457,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                               0, 0, 1, 0, 0, 0, 0,
                               0, 0, 1, 0, 0, 0, 0,
                               0, 0, 1, 0, 0, 0, 0
-                              ]) * np.random.uniform(0.00, 0.00)
+                              ]) * np.random.uniform(0.00, 1.00)
 
         # sample random initial vel
-        qvel_addition = np.random.uniform(-0.1, 0.1, len(self.default_init_qvel)) * self.step_rate
-        qvel = self.default_init_qvel + qvel_addition
+        """ qvel_addition = np.random.uniform(-0.1, 0.1, len(self.default_init_qvel)) * self.step_rate
+        qvel = self.default_init_qvel + qvel_addition """
+        qvel = self.default_init_qvel
 
         self.set_state(qpos, qvel)  # reset the values of mujoco model(robot)
 
@@ -482,10 +480,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         # initial tendon length
         self.prev_ten_length = self.data.ten_length
 
-        # calculate the current step observations and fill out the observation buffer
-        zero_actions = np.array([0.]*self.num_actions)
-
-        cur_step_obs = self._get_current_obs()
         # update the com state
         self.prev_com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
         for k in range(self.check_steps):
