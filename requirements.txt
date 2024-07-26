@@ -7,4 +7,6 @@ scipy==1.10.1
 protobuf==5.27.1
 tensorboard==2.14.0
 imageio==2.34.2
-rich
+tqdm==4.66.4
+rich==13.7.1
+matplotlib==4.3.1
