@@ -30,13 +30,13 @@ def rescale_actions(low, high, action):
 
 
 ADD_TENDON_LENGTH_OBSERVATION = False
-INITIALIZE_ROBOT_IN_AIR = True
+INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
-LOG_TO_CSV = False
-LOG_FILE = '/logs/com_vel_initial_vel.csv'
-LOG_TARGET = 'com_vel'
+LOG_TO_CSV = True
+LOG_FILE = '/logs/tendon_speed_PPO3.csv'
+LOG_TARGET = 'tendon_speed'
 
 
 class TensegrityEnv(MujocoEnv, utils.EzPickle):
@@ -327,7 +327,13 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             elif LOG_TARGET == 'com_vel':
                 self.save_log_data(self.step_cnt, self.com_vel)
             elif LOG_TARGET == 'action':
-                self.save_log_data(self.step_cnt, action)
+                self.save_log_data(self.step_cnt, rescale_actions(self.ctrl_min, self.ctrl_max, action))
+            elif LOG_TARGET == 'imu_data':
+                self.save_log_data(self.step_cnt, self.data.sensordata[0:36])
+            elif LOG_TARGET == 'tendon_length':
+                self.save_log_data(self.step_cnt, self.data.ten_length)
+            elif LOG_TARGET == 'tendon_speed':
+                self.save_log_data(self.step_cnt, self.data.ten_velocity)
             #self.log_tension_force(self.step_cnt, obs[0:36])
             #self.log_tension_force(self.step_cnt, self.data.sensordata)
             #self.log_tension_force(self.step_cnt, obs[36:60])
@@ -471,7 +477,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.vel_command = [0.6, 0.0, 0.0]
         else:
             #v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
-            v = 0.6
+            v = 0.0
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter

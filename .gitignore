@@ -12,3 +12,6 @@ venv2
 .idea
 test.py
 config.json
+scripts/test/*
+scripts/test
+logs/
