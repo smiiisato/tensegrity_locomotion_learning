@@ -17,16 +17,7 @@ from gymnasium import utils, spaces
 from gymnasium.envs.mujoco import MujocoEnv
 
 from EMAfilter import EMAFilter
-
-
-def rescale_actions(low, high, action):
-    """
-    remapping the normalized actions from [-1, 1] to [low, high]
-    """
-    d = (high - low) / 2.0
-    m = (high + low) / 2.0
-    rescaled_action = action * d + m
-    return rescaled_action
+from tensegrity_utils import *
 
 
 ADD_TENDON_LENGTH_OBSERVATION = False
@@ -34,7 +25,7 @@ INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
-LOG_TO_CSV = True
+LOG_TO_CSV = False
 LOG_FILE = '/logs/tendon_speed_PPO3.csv'
 LOG_TARGET = 'tendon_speed'
 
@@ -99,7 +90,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
 
         # observation parameters
-        self.projected_gravity = None # (3*6,)
+        self.projected_gravity = np.zeros(18)  # (3*6,)
         self.linear_velocity = None # (3*6,)
         self.com_pos = np.zeros(3)  # (3,)    
         self.com_velocity = None    # (6,)
@@ -201,7 +192,10 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             + tendon_length + tendon_speed + actions + commands
         critic observation dimention == 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3 = 204
         """
-        self.projected_gravity = self.get_projected_gravity()  # (18,)
+        for i in range(6):
+            rot_mat = self.data.xmat[
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "link{}".format(i+1))].reshape(3, 3)
+            self.projected_gravity[i*3:i*3+3] = rot_mat.T @ np.array([0., 0., -1.0])
         cur_velocity = np.array(copy.deepcopy(self.data.qvel.reshape(-1, 6)))   # (6, 6)
         self.linear_velocity = np.array(cur_velocity[:, 0:3]).reshape(-1)  # (18,)
         self.com_velocity = np.mean(cur_velocity, axis=0)  # (6,)
@@ -227,18 +221,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         return {"actor": actor_obs, "critic": critic_obs}
 
     
-    def get_projected_gravity(self):
-        """
-        calculate the projected gravity on the body frame
-        """
-        gravity = np.array([0., 0., -1.0]) # gravity direction in the world frame
-        projected_gravity = np.zeros(18)
-        for i in range(6):
-            rot_mat = self.data.xmat[
-                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "link{}".format(i+1))].reshape(3, 3)
-            projected_gravity[i*3:i*3+3] = rot_mat.T @ gravity # gravity projected on the body frame
-        return projected_gravity
-
     def save_log_data(self, step, log_data):
         with open(self.log_file, 'a') as f:
             writer = csv.writer(f)
@@ -298,10 +280,13 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         obs = cur_step_obs
 
         # calculate the rewards
-        current_ang_momentum = self.calculate_angular_momentum(self.data.qpos,
+        current_ang_momentum = calculate_angular_momentum(self.data,
+                                                                self.model,
+                                                               self.data.qpos,
                                                                self.data.qvel,
                                                                self.com_pos,
-                                                               self.com_vel[0:3])
+                                                               self.com_vel[0:3],
+                                                                self.body_inertial)
 
         self.prev_com_pos = self.com_pos
 
@@ -323,17 +308,17 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         # log data to csv
         if self.test and self.log_to_csv:
             if LOG_TARGET == 'com_pos':
-                self.save_log_data(self.step_cnt, self.com_pos)
+                save_log_data(self.step_cnt, self.com_pos, self.log_file)
             elif LOG_TARGET == 'com_vel':
-                self.save_log_data(self.step_cnt, self.com_vel)
+                save_log_data(self.step_cnt, self.com_vel, self.log_file)
             elif LOG_TARGET == 'action':
-                self.save_log_data(self.step_cnt, rescale_actions(self.ctrl_min, self.ctrl_max, action))
+                save_log_data(self.step_cnt, rescale_actions(self.ctrl_min, self.ctrl_max, action), self.log_file)
             elif LOG_TARGET == 'imu_data':
-                self.save_log_data(self.step_cnt, self.data.sensordata[0:36])
+                save_log_data(self.step_cnt, self.data.sensordata[0:36], self.log_file)
             elif LOG_TARGET == 'tendon_length':
-                self.save_log_data(self.step_cnt, self.data.ten_length)
+                save_log_data(self.step_cnt, self.data.ten_length, self.log_file)
             elif LOG_TARGET == 'tendon_speed':
-                self.save_log_data(self.step_cnt, self.data.ten_velocity)
+                save_log_data(self.step_cnt, self.data.ten_velocity, self.log_file)
             #self.log_tension_force(self.step_cnt, obs[0:36])
             #self.log_tension_force(self.step_cnt, self.data.sensordata)
             #self.log_tension_force(self.step_cnt, obs[36:60])
@@ -477,7 +462,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.vel_command = [0.6, 0.0, 0.0]
         else:
             #v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
-            v = 0.0
+            v = 0.6
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter
@@ -496,20 +481,3 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         # return the stacked obs as the initial obs of episode
         return self._get_current_obs()
-
-
-    def calculate_angular_momentum(self, qpos, qvel, com_position, com_vel):
-        total_angular_momentum = np.zeros(3)
-        body_mass = 0.65
-        links_position = qpos.reshape(-1, 7)[:, 0:3]
-        links_velocity = qvel.reshape(-1, 6)[:, 0:3]
-        links_ang_vel = qvel.reshape(-1, 6)[:, 3:]
-        for i in range(6):
-            rot_mat = self.data.xmat[
-                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "link{}".format(i+1))].reshape(3, 3)  # R_i: rotation matrix
-            angular_momentum = body_mass*np.cross((links_position[i] - com_position), (links_velocity[i] - com_vel))
-            angular_momentum += rot_mat @ self.body_inertial[i] @ rot_mat.transpose() @ links_ang_vel[i]
-
-            total_angular_momentum += angular_momentum
-
-        return total_angular_momentum
