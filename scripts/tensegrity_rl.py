@@ -30,14 +30,14 @@ def parser():
     # observation and action space
     parser.add_argument("--normalize_obs", action="store_true", default=True, help="whether normalize the obs value or not")
     parser.add_argument("--obs_range", type=float, default=100.0, help="actuator control range")  # max obs value before sending to moving average
-    parser.add_argument("--act_range", type=float, default=16.0, help="actuator control range")  # action space(force value) TODO:normalize action
+    parser.add_argument("--act_range", type=float, default=24.0, help="actuator control range")  # action space(force value) TODO:normalize action
 
     # learning-related params
     parser.add_argument("--n_env", type=int, default=1, help="number of sub_env/parallel_env to use")
     parser.add_argument("--batch_size", type=int, default=24576, help="number of batch size(experience buffer size)")  # experience buffer size
     parser.add_argument("--minibatch", type=int, default=2048, help="number of mini_batch to update policy")  # minibatch size
     parser.add_argument("--epoch", type=int, default=5, help="number of epoch to update")  # data epoch numbers for one policy iteration
-    parser.add_argument("--max_step", type=int, default=4000000000, help="PPO train total time steps")  # sum of all parallel envs' steps
+    parser.add_argument("--max_step", type=int, default=4000000000/10, help="PPO train total time steps")  # sum of all parallel envs' steps
     parser.add_argument("--lr", type=float, default=0.0003, help="learning rate")
     parser.add_argument("--gamma", type=float, default=0.99, help="discount factor")
     parser.add_argument("--save_interval", type=int, default=50, help="interval of iteration to save network weight")
@@ -112,12 +112,6 @@ def main():
     elif args.net_layer == 7:
         pi_arch = [512, 512, 512, 512, 256, 256, 128]
         vf_arch = [512, 512, 512, 512, 256, 256, 128]
-    elif args.net_layer == 3:
-        pi_arch = [512, 256, 128]
-        vf_arch = [512, 256, 128]
-    elif args.net_layer == 2:
-        pi_arch = [512, 256]
-        vf_arch = [512, 256]
     policy_kwargs = dict(activation_fn=torch.nn.Tanh,
                          net_arch=dict(pi=pi_arch, vf=vf_arch),  # changed from [512, 256] 
                          log_std_init=-2.1,)  # -2.1  for ppo19
@@ -203,7 +197,7 @@ def main():
         # print(env.reset())
         # raise None
         obs = env.reset()
-        for i in range(args.max_step):
+        for i in range(int(args.max_step)):
             action, _states = model.predict(obs, deterministic=True)
             obs, rewards, dones, infos = env.step(action)
             # obs, reward, terminated, truncated, info = env.step(env.action_space.sample())
