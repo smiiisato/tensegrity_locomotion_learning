@@ -78,9 +78,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.num_actions = 24
         self.ctrl_max = np.array([0.] * self.num_actions)
         self.ctrl_min = np.array([-self.act_range] * self.num_actions)
-        self.action_space_low = [-1.0] * self.num_actions
-        self.action_space_high = [1.0] * self.num_actions
-
 
         # observation parameters
         self.projected_gravity = np.zeros(18)  # (3*6,)
@@ -159,10 +156,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         """
         always use normalized action space
         Noting: during env.step(), please rescale the action to the actual range!
+        In this case, the action space is MultiDiscrete([24]*24)
         """
-        low = np.asarray(self.action_space_low)
-        high = np.asarray(self.action_space_high)
-        self.action_space = spaces.Box(low, high, dtype=np.float32)
+        self.action_space = spaces.MultiDiscrete(nvec=[24]*24, start=[-24]*24, dtype=np.int8)
         return self.action_space
 
     def _get_current_actor_obs(self):
@@ -229,7 +225,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             - calculate reward
             - check terminate conditions and truncated condition separately(timeout): reference->https://github.com/openai/gym/issues/2510
             - return
-        action: (24,) normalized actions[-1,1] directly from policy
+        action: (24,) discrete action space [-24, 0]
         """
         if not self.is_params_set:
             self._set_render_param()
@@ -241,15 +237,15 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         if self.prev_ten_length is None:
             self.prev_ten_length = np.array(self.data.ten_length)
         
-        # rescale action to tension force first
-        self.actions = action 
-        tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
-
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
 
         # add external assistive force curriculum
         self.data.xfrc_applied[:] = 0.0
+
+        # rescale action to tension force first
+        self.actions = action 
+        tension_force = self.actions.astype(np.float32) # action space is MultiDiscrete([24]*24)
         
         # add action(tension force) noise from [0.95, 1.05]--> percentage
         tension_force *= np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, self.num_actions)
@@ -294,9 +290,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         
         #self.action_penalty = -0.000 * np.linalg.norm(action) * self.step_rate # pre 0.001
         self.tension_penalty = -0.0050 * np.linalg.norm(tension_force) * self.step_rate
-        self.contorl_penalty = -0.000 * np.linalg.norm(action - self.prev_action) * self.step_rate
+        #self.control_penalty = -0.000 * np.linalg.norm(action - self.prev_action) * self.step_rate
         #self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
-        self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.tension_penalty + self.contorl_penalty
+        self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.tension_penalty 
         """ if self.test:
             print("velocity_reward", self.velocity_reward)
             print("ang_momentum_reward", self.ang_momentum_reward)
@@ -311,8 +307,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 save_log_data(self.step_cnt, self.com_pos, self.log_file)
             elif LOG_TARGET == 'com_vel':
                 save_log_data(self.step_cnt, self.com_vel, self.log_file)
-            elif LOG_TARGET == 'action':
-                save_log_data(self.step_cnt, rescale_actions(self.ctrl_min, self.ctrl_max, action), self.log_file)
             elif LOG_TARGET == 'imu_data':
                 save_log_data(self.step_cnt, self.data.sensordata[0:36], self.log_file)
             elif LOG_TARGET == 'tendon_length':
@@ -421,6 +415,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         
         # initial tendon length
         self.prev_ten_length = self.data.ten_length
+
+        # initial actions
+        self.actions = np.array([0.]*self.num_actions)
 
         # update the com state
         self.prev_com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
