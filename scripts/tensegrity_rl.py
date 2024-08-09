@@ -106,18 +106,13 @@ def main():
     elif args.net_layer == 4:
         pi_arch = [512, 512, 256, 128]
         vf_arch = [512, 512, 256, 128]
-    elif args.net_layer == 6:
-        pi_arch = [512, 512, 512, 256, 256, 128]
-        vf_arch = [512, 512, 512, 256, 256, 128]
     elif args.net_layer == 7:
         pi_arch = [512, 512, 512, 512, 256, 256, 128]
         vf_arch = [512, 512, 512, 512, 256, 256, 128]
-    elif args.net_layer == 3:
-        pi_arch = [512, 256, 128]
-        vf_arch = [512, 256, 128]
-    elif args.net_layer == 2:
-        pi_arch = [512, 256]
-        vf_arch = [512, 256]
+    else:
+        pi_arch = [512, 512, 512, 256, 256, 128]
+        vf_arch = [512, 512, 512, 256, 256, 128]
+
     policy_kwargs = dict(activation_fn=torch.nn.Tanh,
                          net_arch=dict(pi=pi_arch, vf=vf_arch),  # changed from [512, 256] 
                          log_std_init=-2.1,)  # -2.1  for ppo19
