@@ -4,14 +4,10 @@
   <default>
     <site size="0.005" rgba="1 1 1 1"/>
     <default class="tendon_actuator">
-      <general ctrllimited="true" ctrlrange="-16.0 0" dyntype="filter" dynprm="0.0179"/> <!-- change parameters later -->
+      <general ctrllimited="true" ctrlrange="-24.0 0" dyntype="filter" dynprm="0.0179"/> <!-- change parameters later -->
     </default>
     <default class="tendon_spatial">
-<<<<<<< HEAD:models/tensegrity_real_model.xml
       <tendon damping="7.03" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/>
-=======
-      <tendon damping="7.03" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/> <!-- previous damping="0.0703"-->
->>>>>>> main:models/tensegrity_real_model_fullactuator_no_stiffness.xml
     </default>
     <default class="tendon_spatial_static">
       <tendon damping="500" stiffness="0" frictionloss="0.5"/>
@@ -33,7 +29,7 @@
     <body name="link1" pos="-0.125 0 0.25" euler="0 0 0">
       <geom name="link1" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 0 0 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator1">
-        <geom name="actuator1" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator1" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_1t">
         <geom name="sphere_1t" type="sphere" size="0.015" mass="0.05" pos="0 0 0"/>
@@ -58,7 +54,7 @@
     <body name="link2" pos="0.125 0 0.25" euler="0 0 0">
       <geom name="link2" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 1 0 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator2">
-        <geom name="actuator2" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator2" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_2t">
         <geom name="sphere_2t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
@@ -83,7 +79,7 @@
     <body name="link3" pos="0 0.125 0.25" euler="0 90 0">
       <geom name="link3" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 1 0 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator3"> 
-        <geom name="actuator3" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator3" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_3t">
         <geom name="sphere_3t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
@@ -108,7 +104,7 @@
     <body name="link4" pos="0 -0.125 0.25" euler="0 90 0">
       <geom name="link4" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 1 1 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator4">
-        <geom name="actuator4" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator4" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_4t">
         <geom name="sphere_4t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
@@ -133,7 +129,7 @@
     <body name="link5" pos="0 0 0.375" euler="90 0 0">
       <geom name="link5" type="cylinder" size="0.01 0.25" mass="0.06" rgba="0 0 1 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator5">
-        <geom name="actuator5" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator5" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_5t">
         <geom name="sphere_5t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>
@@ -158,7 +154,7 @@
     <body name="link6" pos="0 0 0.125" euler="90 0 0">
       <geom name="link6" type="cylinder" size="0.01 0.25" mass="0.06" rgba="1 0 1 1" pos="0 0 0"/>
       <body pos="0 0 0" name="actuator6">
-        <geom name="actuator6" type="box" size="0.040 0.030 0.06" mass="0.6" pos="0 0 0"/>
+        <geom name="actuator6" type="box" size="0.040 0.030 0.06" mass="0.84" pos="0 0 0"/>
       </body>
       <body pos="0 0 0.25" name="sphere_6t">
         <geom name="sphere_6t" type="sphere" size="0.015" mass="0.05" pos="0.0 0.0 0.0"/>

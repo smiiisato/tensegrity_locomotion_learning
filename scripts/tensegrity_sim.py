@@ -21,14 +21,14 @@ from EMAfilter import EMAFilter
 from tensegrity_utils import *
 
 
-ADD_TENDON_LENGTH_OBSERVATION = False
 INITIALIZE_ROBOT_IN_AIR = False
-PLOT_REWARD = False
-PLOT_SENSOR = False
+TEST_STEP_RATE = 0.5
 INITIAL_TENSION = 0.0
+CONTROL_UPDATE_FREQ = 20 # Hz
 LOG_TO_CSV = False
-LOG_FILE = '/logs/tendon_speed_PPO3.csv'
-LOG_TARGET = 'tendon_speed'
+# target = ["com_pos", "com_vel", "action", "imu_data", "tendon_length", "tendon_speed", "tension_force", "velocity_reward", "ang_momentum_reward", "ang_momentum_penalty", "tension_penalty", "contorl_penalty", "reward"]
+LOG_FILE = '/logs/PPO7/angular_momentum_penalty.csv'
+LOG_TARGET = 'ang_momentum_penalty'
 
 
 class TensegrityEnv(MujocoEnv, utils.EzPickle):
@@ -56,11 +56,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         """
         resume training is abandoned due to mujoco supports evaluation along with training
         """
-        # self.plot_sensor = PLOT_SENSOR
-        # if self.plot_sensor:
-        #     # sensor data
-        #     self.sensor_data = []
-        #     self.ema_data = []
             
         # ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
@@ -76,10 +71,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.act_range = act_range  # tension force range
         print("act_range: ", self.act_range)
 
-        self.max_episode = 2048  # maximum steps of every episode
+        self.max_episode = 512 * 2  # maximum steps of every episode
 
-        self.add_tendon_len_obs = ADD_TENDON_LENGTH_OBSERVATION
-        self.plot_reward = PLOT_REWARD
         self.initial_tension = INITIAL_TENSION
         
         # control range
@@ -88,6 +81,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.ctrl_min = np.array([-self.act_range] * self.num_actions)
         self.action_space_low = [-1.0] * self.num_actions
         self.action_space_high = [1.0] * self.num_actions
+        self.control_update_freq = CONTROL_UPDATE_FREQ
+        self.control_count_max = 100 / self.control_update_freq
+        self.control_count = 0
 
 
         # observation parameters
@@ -103,6 +99,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.tendon_speed = None    # (24,)
         self.actions = np.array([0.]*self.num_actions)  # (24,)
         self.vel_command = np.array([0., 0., 0.])   # (3,)
+        self.tension_force = np.array([0.]*self.num_actions)  # (24,)
 
         # observation space
         num_obs_per_step_actor = 111
@@ -125,9 +122,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         self.step_rate = 0.
         if self.test:
-            self.step_rate = 0.5
-            # if self.plot_reward:
-            #     self.draw_reward()
+            self.step_rate = TEST_STEP_RATE
 
         #self.rospack = RosPack()
         root_path = os.path.dirname(os.path.abspath(__file__)) + "/.."
@@ -222,11 +217,11 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         return {"actor": actor_obs, "critic": critic_obs}
 
     
-    def save_log_data(self, step, log_data):
+    """  def save_log_data(self, step, log_data):
         with open(self.log_file, 'a') as f:
             writer = csv.writer(f)
             data = [step] + list(log_data)
-            writer.writerow(data)
+            writer.writerow(data) """
         
     def step(self, action):
         """
@@ -250,23 +245,27 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
 
         if self.prev_ten_length is None:
             self.prev_ten_length = np.array(self.data.ten_length)
-        
-        # rescale action to tension force first
-        self.actions = action 
-        tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
 
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
 
         # add external assistive force curriculum
         self.data.xfrc_applied[:] = 0.0
-        
-        # add action(tension force) noise from [0.95, 1.05]--> percentage
-        tension_force *= np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, self.num_actions)
-        #average_tension_force = np.mean(tension_force)
+
+        # update control input
+        if self.control_count > self.control_count_max: # self.control_update_count_max=5
+            # rescale action to tension force first
+            self.actions = action 
+            self.tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)   
+            # add action(tension force) noise from [0.95, 1.05]--> percentage
+            self.tension_force *= np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, self.num_actions)
+            self.control_count = 0
+ 
+        # update control count
+        self.control_count += 1
 
         # do simulation
-        self._step_mujoco_simulation(tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
+        self._step_mujoco_simulation(self.tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
 
         # update flags
         self.episode_cnt += 1
@@ -301,10 +300,11 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.ang_momentum_penalty = current_ang_momentum[1] * int(current_ang_momentum[1] < 0.)
         self.ang_momentum_reward = current_ang_momentum[1] * int(current_ang_momentum[1] > 0.)
         
-        self.action_penalty = -0.000 * np.linalg.norm(action) * self.step_rate # pre 0.001
+        #self.action_penalty = -0.000 * np.linalg.norm(action) * self.step_rate # pre 0.001
+        self.tension_penalty = -0.0050 * np.linalg.norm(self.tension_force) * self.step_rate
         self.contorl_penalty = -0.000 * np.linalg.norm(action - self.prev_action) * self.step_rate
         #self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
-        self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.action_penalty + self.contorl_penalty
+        self.current_step_total_reward = self.velocity_reward + 1.5 * self.ang_momentum_reward + 5.0 * self.ang_momentum_penalty + self.tension_penalty + self.contorl_penalty
 
         # log data to csv
         if self.test and self.log_to_csv:
@@ -320,6 +320,20 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 save_log_data(self.step_cnt, self.data.ten_length, self.log_file)
             elif LOG_TARGET == 'tendon_speed':
                 save_log_data(self.step_cnt, self.data.ten_velocity, self.log_file)
+            elif LOG_TARGET == 'tension_force':
+                save_log_data(self.step_cnt, self.tension_force, self.log_file)
+            elif LOG_TARGET == 'velocity_reward':
+                save_log_data(self.step_cnt, np.array([self.velocity_reward]), self.log_file)
+            elif LOG_TARGET == 'ang_momentum_reward':
+                save_log_data(self.step_cnt, np.array([self.ang_momentum_reward]), self.log_file)
+            elif LOG_TARGET == 'ang_momentum_penalty':
+                save_log_data(self.step_cnt, np.array([self.ang_momentum_penalty]), self.log_file)
+            elif LOG_TARGET == 'tension_penalty':
+                save_log_data(self.step_cnt, np.array([self.tension_penalty]), self.log_file)
+            elif LOG_TARGET == 'contorl_penalty':
+                save_log_data(self.step_cnt, np.array([self.contorl_penalty]), self.log_file)
+            elif LOG_TARGET == 'reward':
+                save_log_data(self.step_cnt, np.array([self.current_step_total_reward]), self.log_file)
         
         ## update prev_action
         self.prev_action = action
@@ -363,10 +377,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         )
 
     def reset_model(self):
-        
-        # if self.plot_sensor:
-        #     self.sensor_data.clear()
-        #     self.ema_data.clear()
 
         self.episode_cnt = 0
 
