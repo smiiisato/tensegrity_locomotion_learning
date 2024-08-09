@@ -7,7 +7,11 @@
       <general ctrllimited="true" ctrlrange="-24.0 0" dyntype="filter" dynprm="0.0179"/> <!-- change parameters later -->
     </default>
     <default class="tendon_spatial">
+<<<<<<< HEAD:models/tensegrity_real_model.xml
       <tendon damping="7.03" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/>
+=======
+      <tendon damping="7.03" stiffness="0" frictionloss="0.5" limited="true" range="0.0 0.30"/> <!-- previous damping="0.0703"-->
+>>>>>>> main:models/tensegrity_real_model_fullactuator_no_stiffness.xml
     </default>
     <default class="tendon_spatial_static">
       <tendon damping="500" stiffness="0" frictionloss="0.5"/>

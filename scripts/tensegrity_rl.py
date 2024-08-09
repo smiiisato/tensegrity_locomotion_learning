@@ -106,9 +106,6 @@ def main():
     elif args.net_layer == 4:
         pi_arch = [512, 512, 256, 128]
         vf_arch = [512, 512, 256, 128]
-    elif args.net_layer == 6:
-        pi_arch = [512, 512, 512, 256, 256, 128]
-        vf_arch = [512, 512, 512, 256, 256, 128]
     elif args.net_layer == 7:
         pi_arch = [512, 512, 512, 512, 256, 256, 128]
         vf_arch = [512, 512, 512, 512, 256, 256, 128]

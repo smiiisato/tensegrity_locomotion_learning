@@ -2,6 +2,7 @@
 this script uses the imu data from the real robot instead of quaternion value to train the tensegrity robot in simulation
 """
 
+import os
 import copy
 import os.path
 import time
@@ -347,7 +348,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             "angular_momentum_penalty": self.ang_momentum_penalty
         }
         
-
         # check terminate and truncated
         self.com_pos_deque.appendleft(self.com_pos)
         terminated = False
