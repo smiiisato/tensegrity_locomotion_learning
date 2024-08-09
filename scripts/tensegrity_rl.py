@@ -6,15 +6,18 @@ import argparse
 import numpy as np
 import pandas as pd
 import torch
+import logging
+from datetime import datetime
 
 from stable_baselines3 import PPO
 from stable_baselines3.common.monitor import Monitor
 from stable_baselines3.common.vec_env import VecEnv, SubprocVecEnv, DummyVecEnv, VecNormalize
 from stable_baselines3.common.utils import set_random_seed, get_device, get_latest_run_id
-from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList
+from stable_baselines3.common.callbacks import CheckpointCallback, CallbackList, EvalCallback, BaseCallback
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 
 from tensegrity_sim import TensegrityEnv
+from non_shared_actor_critic import NonSharedActorCriticPolicy
 
 
 def parser():
@@ -34,7 +37,7 @@ def parser():
     parser.add_argument("--batch_size", type=int, default=24576, help="number of batch size(experience buffer size)")  # experience buffer size
     parser.add_argument("--minibatch", type=int, default=2048, help="number of mini_batch to update policy")  # minibatch size
     parser.add_argument("--epoch", type=int, default=5, help="number of epoch to update")  # data epoch numbers for one policy iteration
-    parser.add_argument("--max_step", type=int, default=400000000, help="PPO train total time steps")  # sum of all parallel envs' steps
+    parser.add_argument("--max_step", type=int, default=4000000000, help="PPO train total time steps")  # sum of all parallel envs' steps
     parser.add_argument("--lr", type=float, default=0.0003, help="learning rate")
     parser.add_argument("--gamma", type=float, default=0.99, help="discount factor")
     parser.add_argument("--save_interval", type=int, default=50, help="interval of iteration to save network weight")
@@ -67,7 +70,6 @@ def make_env(test, max_step, act_range=6.0, resume=False, render_mode=None):
         return env
     return _init
 
-
 def main():
     args = parser().parse_args()
     set_random_seed(args.seed)
@@ -85,7 +87,7 @@ def main():
         if args.normalize_obs:
             env = VecNormalize(venv=env,
                                training=True,
-                               norm_obs=True,
+                               norm_obs=True, # normalize observation
                                norm_reward=False,
                                clip_obs=args.obs_range,
                                gamma=args.gamma)
@@ -114,7 +116,7 @@ def main():
     policy_kwargs = dict(activation_fn=torch.nn.Tanh,
                          net_arch=dict(pi=pi_arch, vf=vf_arch),  # changed from [512, 256] 
                          log_std_init=-2.1,)  # -2.1  for ppo19
-    model = PPO("MlpPolicy",
+    model = PPO(NonSharedActorCriticPolicy,
                 env,
                 policy_kwargs=policy_kwargs,
                 learning_rate=args.lr,
@@ -150,10 +152,13 @@ def main():
                                                  save_path=root_dir + "/../saved/PPO_{0}/models".format(trial),
                                                  name_prefix='model',
                                                  save_vecnormalize=args.normalize_obs)
+
         # start_randomizing_callback = StartRandomizingCallback(threshold=200, env=env, model=model)
         # start_command_callback = StartCommandCallback(threshold=100, env=env, model=model)
         callbacks = CallbackList([checkpoint_callback])
+        logging.info("Start training------")
         model.learn(total_timesteps=args.max_step, callback=callbacks, progress_bar=True)
+        logging.info("End training------")
 
     elif args.what == "test":
         # 1. load the model parameters.

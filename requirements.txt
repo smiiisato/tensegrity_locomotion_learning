@@ -1,0 +1,16 @@
+torch==2.3.1
+stable-baselines3==2.3.2
+mujoco==2.3.4
+numpy==1.24.4
+gym==0.26.2
+scipy==1.10.1
+protobuf==5.27.1
+tensorboard==2.14.0
+imageio==2.34.2
+tqdm==4.66.4
+rich
+matplotlib==3.7.5
+pandas==1.3.3
+onnx
+onnxruntime
+mujoco-python-viewer==0.1.4

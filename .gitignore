@@ -7,6 +7,17 @@ saved/
 scripts/__pycache__/
 logs/
 *.txt
+<<<<<<< HEAD
+venv
+venv2
+.idea
+test.py
+config.json
+scripts/test/*
+scripts/test
+logs/
+=======
 .idea
 venv2
 venv
+>>>>>>> main

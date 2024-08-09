@@ -4,6 +4,7 @@ this script uses the imu data from the real robot instead of quaternion value to
 
 import os
 import copy
+import os.path
 import time
 from typing import Any, Optional, SupportsFloat
 import mujoco
@@ -15,31 +16,19 @@ import csv
 # from rospkg import RosPack
 from gymnasium import utils, spaces
 from gymnasium.envs.mujoco import MujocoEnv
-# from rospkg import RosPack
 
 from EMAfilter import EMAFilter
+from tensegrity_utils import *
 
 
-def rescale_actions(low, high, action):
-    """
-    remapping the normalized actions from [-1, 1] to [low, high]
-    """
-
-    d = (high - low) / 2.0
-    m = (high + low) / 2.0
-    rescaled_action = action * d + m
-    return rescaled_action
-
-
-ADD_TENDON_LENGTH_OBSERVATION = True
-ADD_ENC_VALUE_OBSERVATION = False
+ADD_TENDON_LENGTH_OBSERVATION = False
 INITIALIZE_ROBOT_IN_AIR = False
 PLOT_REWARD = False
 PLOT_SENSOR = False
 INITIAL_TENSION = 0.0
 LOG_TO_CSV = False
-LOG_FILE = '/logs/obs_0619_1.csv'
-LOG_TARGET = 'obs'
+LOG_FILE = '/logs/tendon_speed_PPO3.csv'
+LOG_TARGET = 'tendon_speed'
 
 
 class TensegrityEnv(MujocoEnv, utils.EzPickle):
@@ -75,10 +64,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             
         # ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
-        #action filter
-        # self.action_filter = ActionFilter(0.3, np.array([0.0]*24))
-        # initial encoder value
-        # self.enc_value = np.array([0.0]*24)
         # initial tendon length
         self.prev_ten_length = None
 
@@ -94,7 +79,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.max_episode = 2048  # maximum steps of every episode
 
         self.add_tendon_len_obs = ADD_TENDON_LENGTH_OBSERVATION
-        self.add_enc_value_obs = ADD_ENC_VALUE_OBSERVATION
         self.plot_reward = PLOT_REWARD
         self.initial_tension = INITIAL_TENSION
         
@@ -105,46 +89,53 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.action_space_low = [-1.0] * self.num_actions
         self.action_space_high = [1.0] * self.num_actions
 
+
+        # observation parameters
+        self.projected_gravity = np.zeros(18)  # (3*6,)
+        self.linear_velocity = None # (3*6,)
+        self.com_pos = np.zeros(3)  # (3,)    
+        self.com_velocity = None    # (6,)
+        self.angular_velocity = None    # (3*6,)
+        self.imu_data = None    # (6*6,)
+        self.contact_state = None   # (2*6,): 1 for contact, 0 for no contact
+        self.distance_from_com = None   # (3*6,)
+        self.tendon_length = None   # (24,)
+        self.tendon_speed = None    # (24,)
+        self.actions = np.array([0.]*self.num_actions)  # (24,)
+        self.vel_command = np.array([0., 0., 0.])   # (3,)
+
         # observation space
-        num_obs_per_step = 63  # 36 + 24 + 24 + 3 = 87
-        if self.add_tendon_len_obs:
-            num_obs_per_step += 24
-        if self.add_enc_value_obs:
-            num_obs_per_step += 24
-    
-        self.n_obs_step = 1
-        observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step*self.n_obs_step,))
-        self.obs_deque = deque(maxlen=self.n_obs_step)
-        for i in range(self.n_obs_step):
-            self.obs_deque.appendleft(np.zeros(num_obs_per_step))
+        num_obs_per_step_actor = 111
+        num_obs_per_step_critic = 204
+        actor_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_actor,))
+        critic_observation_space = spaces.Box(low=-np.inf, high=np.inf, shape=(num_obs_per_step_critic,))
+        observation_space = spaces.Dict({
+            "actor": actor_observation_space, 
+            "critic": critic_observation_space
+            })
 
         self.check_steps = 200
         self.com_pos_deque = deque(maxlen=self.check_steps)
         for k in range(self.check_steps):
             self.com_pos_deque.appendleft(np.zeros(3))
 
-        # velocity command
-        self.vel_command = np.array([0., 0., 0.])  # linear velocity(x, y, z)
-
-        self.actions = np.array([0.]*self.num_actions)
 
         self.episode_cnt = 0  # current episode step counter, used in test mode, reset to zero at the beginning of new episode
         self.step_cnt = 0  # never reset
 
         self.step_rate = 0.
         if self.test:
-            self.step_rate = 1.0
+            self.step_rate = 0.5
             # if self.plot_reward:
             #     self.draw_reward()
 
-        # self.rospack = RosPack()
+        #self.rospack = RosPack()
         root_path = os.path.dirname(os.path.abspath(__file__)) + "/.."
         self.log_to_csv = LOG_TO_CSV
         if self.log_to_csv:
-            self.log_file = os.path.join(root_path + LOG_FILE)
+            self.log_file = root_path + LOG_FILE
 
-        # self.rospack = RosPack()
-        model_path = root_path + '/models/scene_real_model_fullactuator_no_stiffness.xml'
+        model_path = root_path + '/models/scene_real_model.xml'
         self.frame_skip = 2  # number of mujoco simulation steps per action step
         MujocoEnv.__init__(
             self,
@@ -184,24 +175,53 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.action_space = spaces.Box(low, high, dtype=np.float32)
         return self.action_space
 
-    def _get_current_obs(self, imu_data, ten_length, actions, commands):
+    def _get_current_actor_obs(self):
         """
-        obs = imu + ten_len + actions + commands
+        actor_obs = imu_data + tendon_length + tendon_speed + actions + commands
+        actor observation dimention == 36 + 24 + 24 + 24 + 3 = 111
         """
-        return np.concatenate((imu_data, ten_length, actions.flatten(), commands))
+        self.imu_data = self.ema_filter.update(np.array(copy.deepcopy(self.data.sensordata[:36]))) # (36,)
+        imu_with_noise = self.imu_data * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 36)
+        self.tendon_length = np.array(copy.deepcopy(self.data.ten_length)) * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 24)  # (24,)
+        self.tendon_speed = np.array(copy.deepcopy(self.data.ten_velocity)) * np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, 24) # (24,)
 
-    # def _get_current_obs2(self, imu_data, ten_length, actions, commands):
-    #     """
-    #     obs = imu + enc_value + actions + commands
-    #     """
-    #     diff_ten_length = np.array(ten_length) - self.prev_ten_length
-    #     diff_enc_value = -1.0 * (diff_ten_length / (0.01 * np.pi) * 6.0) # spool一周 = 0.01*pi # 6.0 = encoder一周
-    #     self.enc_value += diff_enc_value
-    #     return np.concatenate((imu_data, self.enc_value, actions.flatten(), commands))
+        return np.concatenate((imu_with_noise, self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
+    
+    def _get_current_critic_obs(self):
+        """
+        critic_obs = projected gravity + linear velocity + com_velocity + com_pos + angular velocity + imu_data + contact state + distance from COM
+            + tendon_length + tendon_speed + actions + commands
+        critic observation dimention == 18 + 18 + 3 + 6 + 18 + 36 + 12 + 18 + 24 + 24 + 24 + 3 = 204
+        """
+        for i in range(6):
+            rot_mat = self.data.xmat[
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "link{}".format(i+1))].reshape(3, 3)
+            self.projected_gravity[i*3:i*3+3] = rot_mat.T @ np.array([0., 0., -1.0])
+        cur_velocity = np.array(copy.deepcopy(self.data.qvel.reshape(-1, 6)))   # (6, 6)
+        self.linear_velocity = np.array(cur_velocity[:, 0:3]).reshape(-1)  # (18,)
+        self.com_velocity = np.mean(cur_velocity, axis=0)  # (6,)
+        self.com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
+        self.angular_velocity = np.array(cur_velocity[:, 3:]).reshape(-1)  # (18,)
+        self.imu_data = self.ema_filter.update(np.array(copy.deepcopy(self.data.sensordata[:36])))  # (36,)
+        self.contact_state = np.array(copy.deepcopy(self.data.sensordata[36:48]))  # (12,)
+        #print("contact_state", self.contact_state)
+        self.distance_from_com = (np.array(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3])) - self.com_pos).flatten()  # (18,)
+        self.tendon_length = np.array(copy.deepcopy(self.data.ten_length))  # (24,)
+        self.tendon_speed = np.array(copy.deepcopy(self.data.ten_velocity))  # (24,)
 
-    def _get_stack_obs(self):
-        return np.concatenate([self.obs_deque[i] for i in range(self.n_obs_step)])
+        return np.concatenate((self.projected_gravity, self.linear_velocity, self.com_velocity, self.com_pos, self.angular_velocity, self.imu_data, 
+                               self.contact_state, self.distance_from_com, 
+                               self.tendon_length, self.tendon_speed, self.actions, self.vel_command), dtype=np.float32)
+    
+    def _get_current_obs(self):
+        """
+        observations = Dict({"actor":actor_obs, "critic":critic_obs})
+        """
+        actor_obs = self._get_current_actor_obs()
+        critic_obs = self._get_current_critic_obs()
+        return {"actor": actor_obs, "critic": critic_obs}
 
+    
     def save_log_data(self, step, log_data):
         with open(self.log_file, 'a') as f:
             writer = csv.writer(f)
@@ -232,11 +252,8 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.prev_ten_length = np.array(self.data.ten_length)
         
         # rescale action to tension force first
+        self.actions = action 
         tension_force = rescale_actions(self.ctrl_min, self.ctrl_max, action)
-
-        # filter the action value
-        # filtered_tension_force = self.action_filter.update(tension_force)
-        # filtered_tension_force = tension_force
 
         # add external disturbance to center of each rod--> [N]
         self.data.qfrc_applied[:] = 0.02 * self.step_rate * np.random.randn(len(self.data.qfrc_applied))
@@ -245,8 +262,9 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.data.xfrc_applied[:] = 0.0
         
         # add action(tension force) noise from [0.95, 1.05]--> percentage
-        tension_force *= np.random.uniform(0.98, 1.02, self.num_actions)
-        average_tension_force = np.mean(tension_force)
+        tension_force *= np.random.uniform(1.0 - self.step_rate * 0.05, 1.0 + self.step_rate * 0.05, self.num_actions)
+        #average_tension_force = np.mean(tension_force)
+
         # do simulation
         self._step_mujoco_simulation(tension_force, self.frame_skip)  # self.frame_skip=2, mujoco_step=200hz [0.95, 1.05]
 
@@ -255,32 +273,29 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.step_cnt += 1
 
         # calculate the observations and update the observation deque
-        # if self.add_tendon_len_obs: -> currently only using tendon length and imu value
-        imu_data = self.ema_filter.update(self.data.sensordata) # TODO
-        tendon_length = self.data.ten_length
-        cur_step_obs = self._get_current_obs(imu_data, tendon_length, action, self.vel_command)
-        # elif self.add_enc_value_obs:
-        #     imu_data = self.ema_filter.update(self.data.sensordata)
-        #     tendon_length = self.data.ten_length
-        #     cur_step_obs = self._get_current_obs2(imu_data, tendon_length, action, self.vel_command)
-        self.obs_deque.appendleft(cur_step_obs)
-        obs = self._get_stack_obs()
+        cur_step_obs = self._get_current_obs()
+
+        self.com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
+        self.com_vel = np.mean(copy.deepcopy(self.data.qvel.reshape(-1, 6)), axis=0)  # (6,)
+
+        obs = cur_step_obs
 
         # calculate the rewards
-        current_com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
-        current_com_vel = np.mean(copy.deepcopy(self.data.qvel.reshape(-1, 6)), axis=0)  # (6,)
-        current_ang_momentum = self.calculate_angular_momentum(self.data.qpos,
+        current_ang_momentum = calculate_angular_momentum(self.data,
+                                                                self.model,
+                                                               self.data.qpos,
                                                                self.data.qvel,
-                                                               current_com_pos,
-                                                               current_com_vel[0:3])
+                                                               self.com_pos,
+                                                               self.com_vel[0:3],
+                                                                self.body_inertial)
 
-        self.prev_com_pos = current_com_pos
+        self.prev_com_pos = self.com_pos
 
-        if np.dot(current_com_vel[0:2], self.vel_command[0:2]) > np.linalg.norm(self.vel_command)**2: # if v_x * v_x_cmd > ||v_x_cmd||^2
+        if np.dot(self.com_vel[0:2], self.vel_command[0:2]) > np.linalg.norm(self.vel_command)**2: # if v_x * v_x_cmd > ||v_x_cmd||^2
             self.velocity_reward = 1.0
         else:
             # velocity_reward = e^(-12*(v_x - v_x_cmd)^2)
-            self.velocity_reward = np.exp(-6.0*(np.dot(current_com_vel[0:2], self.vel_command[0:2]) - np.linalg.norm(self.vel_command[0:2])**2)**2)
+            self.velocity_reward = np.exp(-10.0*(np.dot(self.com_vel[0:2], self.vel_command[0:2]) - np.linalg.norm(self.vel_command[0:2])**2)**2)
             #self.velocity_reward = np.exp(-10.0*(np.dot(current_com_vel[0:2], self.vel_command[0:2]) - np.linalg.norm(self.vel_command[0:2]))**2)
             #self.velocity_reward = np.exp(-8.0*np.square(current_com_vel[0:2] - self.vel_command[0:2]).sum())
         self.ang_momentum_penalty = current_ang_momentum[1] * int(current_ang_momentum[1] < 0.)
@@ -294,23 +309,31 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         # log data to csv
         if self.test and self.log_to_csv:
             if LOG_TARGET == 'com_pos':
-                self.save_log_data(self.step_cnt, current_com_pos)
+                save_log_data(self.step_cnt, self.com_pos, self.log_file)
             elif LOG_TARGET == 'com_vel':
-                self.save_log_data(self.step_cnt, current_com_vel)
+                save_log_data(self.step_cnt, self.com_vel, self.log_file)
             elif LOG_TARGET == 'action':
-                self.save_log_data(self.step_cnt, action)
-            elif LOG_TARGET == 'obs':
-                self.save_log_data(self.step_cnt, obs)
-            elif LOG_TARGET == 'reward':
-                self.save_log_data(self.step_cnt, self.current_step_total_reward)
-  
+                save_log_data(self.step_cnt, rescale_actions(self.ctrl_min, self.ctrl_max, action), self.log_file)
+            elif LOG_TARGET == 'imu_data':
+                save_log_data(self.step_cnt, self.data.sensordata[0:36], self.log_file)
+            elif LOG_TARGET == 'tendon_length':
+                save_log_data(self.step_cnt, self.data.ten_length, self.log_file)
+            elif LOG_TARGET == 'tendon_speed':
+                save_log_data(self.step_cnt, self.data.ten_velocity, self.log_file)
+            #self.log_tension_force(self.step_cnt, obs[0:36])
+            #self.log_tension_force(self.step_cnt, self.data.sensordata)
+            #self.log_tension_force(self.step_cnt, obs[36:60])
+            #self.log_tension_force(self.step_cnt, self.data.ten_length)
         
         ## update prev_action
         self.prev_action = action
         # update prev_ten_length
         self.prev_ten_length = np.array(self.data.ten_length)
 
-        rew_dict = {}
+        rew_dict = {
+            "ang_momentum_reward": self.ang_momentum_reward,
+            "angular_momentum_penalty": self.ang_momentum_penalty
+        }
         # if self.test:
         #     """
         #     print("------------", self.episode_cnt)
@@ -367,7 +390,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         }
 
         # check terminate and truncated
-        self.com_pos_deque.appendleft(current_com_pos)
+        self.com_pos_deque.appendleft(self.com_pos)
         terminated = False
         if self.episode_cnt > 400:
             terminated = np.linalg.norm(self.com_pos_deque[0] - self.com_pos_deque[-1]) < 0.03
@@ -375,7 +398,10 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.current_step_total_reward += -5.0
 
         truncated = not (self.episode_cnt < self.max_episode)
-
+        
+        # save sensor data
+        # if self.plot_sensor:
+        #     self.sensor_data.append(self.data.sensordata[0])
         # if terminated or truncated:
         #     if self.plot_sensor:
         #         # self.sensor_data = np.array(self.sensor_data)
@@ -384,13 +410,18 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         #         # print("sensor data saved!")
         #         self.plot_sensor_data()
 
-        # check NaN value and raise an error
-        if np.any(np.isnan(obs)):
-            print("NaN in obs")
+        # nan check
+        if np.any(np.isnan(obs["actor"])):
+            print("NaN in actor obs")
+            raise ValueError
+        if np.any(np.isnan(obs["critic"])):
+            print("NaN in critic obs")
             raise ValueError
         if np.any(np.isnan(self.current_step_total_reward)):
             print("NaN in reward calculation")
             raise ValueError
+        
+        # print("current obs: ", obs)
 
         return (
             obs,
@@ -414,7 +445,7 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         # self.max_episode = 512 + 1024 * self.step_rate
 
         # sample random initial pose
-        qpos_addition = np.random.uniform(-0.00, 0.00, len(self.default_init_qpos)) * self.step_rate  # TODO:BUG
+        qpos_addition = np.random.uniform(-0.05, 0.05, len(self.default_init_qpos)) * self.step_rate  # TODO:BUG
 
         qpos = self.default_init_qpos + qpos_addition
         if (self.init_robot_in_air and self.step_rate > 0.2) or self.test:
@@ -424,11 +455,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                               0, 0, 1, 0, 0, 0, 0,
                               0, 0, 1, 0, 0, 0, 0,
                               0, 0, 1, 0, 0, 0, 0
-                              ]) * np.random.uniform(0.00, 0.00)
+                              ]) * np.random.uniform(0.00, 1.00)
 
         # sample random initial vel
-        qvel_addition = np.random.uniform(-0.0, 0.0, len(self.default_init_qvel)) * self.step_rate
-        qvel = self.default_init_qvel + qvel_addition
+        """ qvel_addition = np.random.uniform(-0.1, 0.1, len(self.default_init_qvel)) * self.step_rate
+        qvel = self.default_init_qvel + qvel_addition """
+        qvel = self.default_init_qvel
 
         self.set_state(qpos, qvel)  # reset the values of mujoco model(robot)
 
@@ -436,30 +468,16 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         if self.test:
             self.vel_command = [0.6, 0.0, 0.0]
         else:
-            #v = np.random.uniform(0.4, 0.7)
+            #v = np.random.uniform(0.6, 0.6+0.2*self.step_rate)
             v = 0.6
             self.vel_command = [v, 0.0, 0.0]
 
         # initialize ema filter
         self.ema_filter = EMAFilter(0.267, np.array([0.0]*36))
-        # initialize action filter
-        # self.action_filter = ActionFilter(0.3, np.array([0.0]*24))
-        # # initial encoder value
-        # self.enc_value = np.array([0.0]*24)
+        
         # initial tendon length
         self.prev_ten_length = self.data.ten_length
 
-        # calculate the current step observations and fill out the observation buffer
-        zero_actions = np.array([0.]*self.num_actions)
-
-        imu_data = self.ema_filter.update(self.data.sensordata)
-        tendon_length = self.data.ten_length
-        if self.add_tendon_len_obs:
-            cur_step_obs = self._get_current_obs(imu_data, tendon_length, zero_actions, self.vel_command)
-        # elif self.add_enc_value_obs:
-        #     cur_step_obs = self._get_current_obs2(imu_data, tendon_length, zero_actions, self.vel_command)
-        for i in range(self.n_obs_step):
-            self.obs_deque.appendleft(cur_step_obs)
         # update the com state
         self.prev_com_pos = np.mean(copy.deepcopy(self.data.qpos.reshape(-1, 7)[:, 0:3]), axis=0)  # (3,)
         for k in range(self.check_steps):
@@ -469,20 +487,4 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
         self.data.ctrl[:] = self.initial_tension
 
         # return the stacked obs as the initial obs of episode
-        return self._get_stack_obs()
-
-    def calculate_angular_momentum(self, qpos, qvel, com_position, com_vel):
-        total_angular_momentum = np.zeros(3)
-        body_mass = 0.65
-        links_position = qpos.reshape(-1, 7)[:, 0:3]
-        links_velocity = qvel.reshape(-1, 6)[:, 0:3]
-        links_ang_vel = qvel.reshape(-1, 6)[:, 3:]
-        for i in range(6):
-            rot_mat = self.data.xmat[
-                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_BODY, "link{}".format(i+1))].reshape(3, 3)  # R_i: rotation matrix
-            angular_momentum = body_mass*np.cross((links_position[i] - com_position), (links_velocity[i] - com_vel))
-            angular_momentum += rot_mat @ self.body_inertial[i] @ rot_mat.transpose() @ links_ang_vel[i]
-
-            total_angular_momentum += angular_momentum
-
-        return total_angular_momentum
+        return self._get_current_obs()
