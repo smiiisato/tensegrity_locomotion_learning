@@ -320,70 +320,12 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
                 save_log_data(self.step_cnt, self.data.ten_length, self.log_file)
             elif LOG_TARGET == 'tendon_speed':
                 save_log_data(self.step_cnt, self.data.ten_velocity, self.log_file)
-            #self.log_tension_force(self.step_cnt, obs[0:36])
-            #self.log_tension_force(self.step_cnt, self.data.sensordata)
-            #self.log_tension_force(self.step_cnt, obs[36:60])
-            #self.log_tension_force(self.step_cnt, self.data.ten_length)
         
         ## update prev_action
         self.prev_action = action
         # update prev_ten_length
         self.prev_ten_length = np.array(self.data.ten_length)
 
-        rew_dict = {
-            "ang_momentum_reward": self.ang_momentum_reward,
-            "angular_momentum_penalty": self.ang_momentum_penalty
-        }
-        # if self.test:
-        #     """
-        #     print("------------", self.episode_cnt)
-        #     # print("tendon_length", self.data.ten_length)
-        #     print("x distance", current_com_pos[0])
-        #     #print("angular momentum pitch", current_ang_momentum[1])
-        #     print("current reward", self.current_step_total_reward)
-        #     print("forward_x_reward", self.forward_x_reward)
-        #     """
-        #     #print("current reward", self.current_step_total_reward)
-        #     print("velocity_reward", self.velocity_reward)
-        #     #print("current_velocity", current_com_vel[0:2])
-        #     #print("angular momentum pitch", current_ang_momentum[1])
-        #     #print("ang_momentum_reward", self.ang_momentum_reward)
-        #     #print("ang_momentum_penalty", self.ang_momentum_penalty)
-        #     #print("current force", average_tension_force)
-        #     #print("tension force", tension_force)
-        #     rew_dict = {
-        #         "ang_momentum_reward": self.ang_momentum_reward,
-        #         "angular_momentum_penalty": self.ang_momentum_penalty
-        #     }
-        #     #self.fig1.canvas.draw()
-        #     #self.fig1.canvas.flush_events()
-        #     if self.plot_reward:
-        #         self.fig2.canvas.draw()
-        #         self.fig2.canvas.flush_events()
-            #print("actutor velocity", self.data.actuator_velocity[0:3])
-            #print("tendon velocity", self.data.ten_velocity[0:3])
-            #print("diff velocity", self.data.ten_velocity[0:3]/1.0 - self.data.actuator_velocity[0:3])
-                
-            # print(mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_GEOM, "floor"))
-            # ground_contact_position = []
-            # for i in range(self.data.ncon):
-            #     con = self.data.contact[i]
-            #     print(f'contact{i}', con.geom1, con.geom2)
-            #     if con.geom1 == 0 or con.geom2 == 0:
-            #         print(con.pos)
-        #
-        # ang_pitch_vel_reward = np.exp(-4.0*np.abs(self.vel_command[1] - current_com_vel[4]))
-        # ang_pitch_vel_penalty = current_com_vel[4] * int((current_com_vel[4] < 0.))
-        # # current_step_total_reward = 0.25*forward_x_reward + 1.5*ang_pitch_vel_reward + 0.75*ang_pitch_vel_penalty
-        # current_step_total_reward = 1.00 * forward_x_reward + 0.0 * ang_pitch_vel_reward + 0.0 * ang_pitch_vel_penalty
-        # rew_dict = {
-        #     "rew": current_step_total_reward,
-        #     "rew_forward_x": forward_x_reward,
-        #     "rew_ang_vel_pitch": ang_pitch_vel_reward,
-        #     "penalty_ang_vel_pitch": ang_pitch_vel_penalty
-        # }
-
-        rew_dict = {}
         rew_dict = {
             "ang_momentum_reward": self.ang_momentum_reward,
             "angular_momentum_penalty": self.ang_momentum_penalty
@@ -398,17 +340,6 @@ class TensegrityEnv(MujocoEnv, utils.EzPickle):
             self.current_step_total_reward += -5.0
 
         truncated = not (self.episode_cnt < self.max_episode)
-        
-        # save sensor data
-        # if self.plot_sensor:
-        #     self.sensor_data.append(self.data.sensordata[0])
-        # if terminated or truncated:
-        #     if self.plot_sensor:
-        #         # self.sensor_data = np.array(self.sensor_data)
-        #         # self.sensor_data = self.sensor_data.reshape(-1, 6)
-        #         # np.save("sensor_data.npy", self.sensor_data)
-        #         # print("sensor data saved!")
-        #         self.plot_sensor_data()
 
         # nan check
         if np.any(np.isnan(obs["actor"])):
